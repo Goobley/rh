@@ -13,27 +13,22 @@
 #include "atmos.h"
 #include "geometry.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
 extern Geometry geometry;
 
-
 /* ------- begin -------------------------- vproject.c -------------- */
 
-double vproject(int k, int mu)
-{
+double vproject(int k, int mu) {
   return geometry.rays[mu].xmu[k] * geometry.vel[k];
 }
 /* ------- end ---------------------------- vproject.c -------------- */
 
 /* ------- begin -------------------------- Bproject.c -------------- */
 
-void Bproject()
-{
+void Bproject() {
   /* --- Since we don't do magnetic fields in spherical geometry
          this routine does nothing --                  -------------- */
 

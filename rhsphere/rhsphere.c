@@ -8,14 +8,14 @@
 
 /* --- Main routine of 1-D spherical-symmetric radiative transfer program.
        MALI scheme formulated according to Rybicki & Hummer
- 
+
   See: G. B. Rybicki and D. G. Hummer 1991, A&A 245, p. 171-181
        G. B. Rybicki and D. G. Hummer 1992, A&A 263, p. 209-215
- 
+
        Formal solution is performed with Feautrier difference scheme
- 
+
        --                                              -------------- */
-  
+
 #include <stdlib.h>
 #include <math.h>
 
@@ -29,9 +29,7 @@
 #include "statistics.h"
 #include "xdr.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
@@ -45,13 +43,11 @@ ProgramStats stats;
 CommandLine commandline;
 char messageStr[MAX_LINE_SIZE];
 
-
 /* ------- begin -------------------------- rhsphere.c -------------- */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   bool_t analyze_output, equilibria_only;
-  int    niter, nact;
+  int niter, nact;
 
   Atom *atom;
   Molecule *molecule;
@@ -71,8 +67,8 @@ int main(int argc, char *argv[])
   readAtomicModels();
   readMolecularModels();
   SortLambda();
-  
-  Background(analyze_output=TRUE, equilibria_only=FALSE);
+
+  Background(analyze_output = TRUE, equilibria_only = FALSE);
   convertScales(&atmos, &geometry);
   getRays(&geometry);
   getBoundary(&geometry);
@@ -87,21 +83,22 @@ int main(int argc, char *argv[])
   Iterate(input.NmaxIter, input.iterLimit);
 
   niter = 0;
-  while (niter < input.NmaxScatter) {  
-    if (solveSpectrum(FALSE, FALSE) <= input.iterLimit) break;
+  while (niter < input.NmaxScatter) {
+    if (solveSpectrum(FALSE, FALSE) <= input.iterLimit)
+      break;
     niter++;
   }
   /* --- Write output files --                     ------------------ */
 
   getCPU(1, TIME_START, NULL);
- 
+
   writeInput();
   writeAtmos(&atmos);
   writeGeometry(&geometry);
   writeSpectrum(&spectrum);
   writeFlux("flux.out");
 
- for (nact = 0;  nact < atmos.Nactiveatom;  nact++) {
+  for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     atom = atmos.activeatoms[nact];
 
     writeAtom(atom);
@@ -109,8 +106,8 @@ int main(int argc, char *argv[])
     writeRadRate(atom);
     writeCollisionRate(atom);
     writeDamping(atom);
-  } 
-  for (nact = 0;  nact < atmos.Nactivemol;  nact++) {
+  }
+  for (nact = 0; nact < atmos.Nactivemol; nact++) {
     molecule = atmos.activemols[nact];
     writeMolPops(molecule);
   }

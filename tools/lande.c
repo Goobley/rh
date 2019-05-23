@@ -5,7 +5,7 @@
  * Han Uitenbroek
  * Last modified: Thu Feb  3 11:51:26 2000 --
  */
- 
+
 #include <stdlib.h>
 
 #include "rh.h"
@@ -18,17 +18,14 @@
 void rawAtom(Atom *atom, char *atomFileName);
 void writeModelAtom(Atom *atom, FILE *fp_out);
 
-
 /* --- Global variables --                             -------------- */
 
 CommandLine commandline;
 char messageStr[MAX_LINE_SIZE];
 
-
 /* ------- begin -------------------------- lande.c ----------------- */
 
-void main(int argc, char *argv[])
-{
+void main(int argc, char *argv[]) {
   register int kr;
   Atom atom;
   AtomicLine *line;
@@ -42,14 +39,14 @@ void main(int argc, char *argv[])
   }
   rawAtom(&atom, argv[1]);
 
-  for (kr = 0;  kr < atom.Nline;  kr++) {
+  for (kr = 0; kr < atom.Nline; kr++) {
     line = atom.line + kr;
     if (line->g_Lande_eff == 0.0) {
       printf("Line %d -> %d:  g_eff = %f\n", line->j, line->i,
-	     effectiveLande(line));
+             effectiveLande(line));
     } else {
-      printf("Line %d -> %d:  g_eff = %f (set in atom file)\n",
-	     line->j, line->i, line->g_Lande_eff);
+      printf("Line %d -> %d:  g_eff = %f (set in atom file)\n", line->j,
+             line->i, line->g_Lande_eff);
     }
   }
 }

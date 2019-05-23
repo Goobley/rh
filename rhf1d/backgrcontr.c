@@ -21,9 +21,7 @@
 
 #define CONTR_INPUT_FILE "contribute.input"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
@@ -37,17 +35,14 @@ ProgramStats stats;
 CommandLine commandline;
 char messageStr[MAX_LINE_SIZE];
 
-
 /* ------- begin -------------------------- backgrcontr.c ----------- */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   register int n;
 
-  int     Nlambda, result;
+  int Nlambda, result;
   double *lambda;
-  FILE   *fp;
-
+  FILE *fp;
 
   /* --- Read input data and initialize --             -------------- */
 
@@ -65,8 +60,8 @@ int main(int argc, char *argv[])
   }
 
   result = fscanf(fp, "%d", &Nlambda);
-  lambda = (double *) malloc(Nlambda * sizeof(double));
-  for (n = 0;  n < Nlambda;  n++)
+  lambda = (double *)malloc(Nlambda * sizeof(double));
+  for (n = 0; n < Nlambda; n++)
     result = fscanf(fp, "%lf", &lambda[n]);
   fclose(fp);
 

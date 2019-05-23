@@ -13,14 +13,14 @@
        (not yet implemented).
        --                                              -------------- */
 
-#define N_TIME_LEVELS  5
+#define N_TIME_LEVELS 5
 
-enum CPUaction  {TIME_START, TIME_POLL, TIME_ADD};
+enum CPUaction { TIME_START, TIME_POLL, TIME_ADD };
 
 typedef struct {
-  bool_t  printCPU;
-  long    memory;
-  FILE   *fp_CPU;
+  bool_t printCPU;
+  long memory;
+  FILE *fp_CPU;
 } ProgramStats;
 
 /* --- Associated function prototypes --               -------------- */

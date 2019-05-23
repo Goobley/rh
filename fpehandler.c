@@ -22,14 +22,12 @@ extern char messageStr[];
 
 /* --- If SETNOTRAPS has been defined (see Makefile) -- ------------- */
 
-void SetFPEtraps(void)
-{
+void SetFPEtraps(void) {
   /* --- Explicitly do not set traps --                -------------- */
 
-  Error(MESSAGE, "SetFPEtraps", 
-	"\nFPE traps have not been set explicitly\n");
+  Error(MESSAGE, "SetFPEtraps", "\nFPE traps have not been set explicitly\n");
 }
-/* --- end SETNOTRAPS --                               -------------- */
+  /* --- end SETNOTRAPS --                               -------------- */
 
 #else
 
@@ -53,55 +51,67 @@ void SetFPEtraps(void)
 
 void Trapped_FPE_Exception(int sig, siginfo_t *sip, ucontext_t *uap);
 
-void SetFPEtraps(void)
-{
+void SetFPEtraps(void) {
   const char routineName[] = "SetFPEtraps";
 
-  if (ieee_handler("set", "common", 
-                   (sigfpe_handler_type) Trapped_FPE_Exception) != 0)
+  if (ieee_handler("set", "common",
+                   (sigfpe_handler_type)Trapped_FPE_Exception) != 0)
     Error(MESSAGE, routineName, "IEEE trapping not supported here\n");
   else
-    Error(MESSAGE, routineName,
-	  "\n-Setting FPE traps for sparc (SunOS 5.x)\n");
+    Error(MESSAGE, routineName, "\n-Setting FPE traps for sparc (SunOS 5.x)\n");
 }
 
-void Trapped_FPE_Exception(int sig, siginfo_t *sip, ucontext_t *uap)
-{
+void Trapped_FPE_Exception(int sig, siginfo_t *sip, ucontext_t *uap) {
   const char routineName[] = "Trapped_FPE_Exception";
 
   char *type = "unknown";
- 
-  switch(sip->si_code) {
- 
-  case FPE_INTDIV:   type = "integer divide by zero          "; break;
-  case FPE_INTOVF:   type = "integer overflow                "; break;
-  case FPE_FLTDIV:   type = "floating point division by zero "; break;
-  case FPE_FLTUND:   type = "floating point underflow        "; break;
-  case FPE_FLTOVF:   type = "floating point overflow         "; break;
-  case FPE_FLTRES:   type = "floating point inexact          "; break;
-  case FPE_FLTINV:   type = "invalid floating point operation"; break;
-  case FPE_FLTSUB:   type = "subscript out of range          "; break;
+
+  switch (sip->si_code) {
+
+  case FPE_INTDIV:
+    type = "integer divide by zero          ";
+    break;
+  case FPE_INTOVF:
+    type = "integer overflow                ";
+    break;
+  case FPE_FLTDIV:
+    type = "floating point division by zero ";
+    break;
+  case FPE_FLTUND:
+    type = "floating point underflow        ";
+    break;
+  case FPE_FLTOVF:
+    type = "floating point overflow         ";
+    break;
+  case FPE_FLTRES:
+    type = "floating point inexact          ";
+    break;
+  case FPE_FLTINV:
+    type = "invalid floating point operation";
+    break;
+  case FPE_FLTSUB:
+    type = "subscript out of range          ";
+    break;
   }
- 
-  sprintf(messageStr, "  ---- trapped IEEE FPE: %s ----\n"
-	  "  ---- signal: %d, code: 0x%x, aborting ----\n",
-	  type, sig, sip->si_code);
+
+  sprintf(messageStr,
+          "  ---- trapped IEEE FPE: %s ----\n"
+          "  ---- signal: %d, code: 0x%x, aborting ----\n",
+          type, sig, sip->si_code);
   Error(MESSAGE, routineName, messageStr);
   abort();
 }
 
-/* --- end SunOS --                                    -------------- */
+  /* --- end SunOS --                                    -------------- */
 
-/* --- Linux --                                        -------------- */
+  /* --- Linux --                                        -------------- */
 
 #elif defined(Linux)
 
 #define _GNU_SOURCE 1
 #include <fenv.h>
 
-
-void SetFPEtraps(void)
-{
+void SetFPEtraps(void) {
   /* --- Enable some exceptions.
          At startup all exceptions are masked. --      -------------- */
 
@@ -110,23 +120,22 @@ void SetFPEtraps(void)
      feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW); */
 }
 
-/* --- end Linux --                                    -------------- */
+  /* --- end Linux --                                    -------------- */
 
 #else
 
 /* --- unknown --                                      -------------- */
 
-void SetFPEtraps(void)
-{
-/*
-  Error(MESSAGE, "SetFPEtraps",
-	"\nUnsupported CPU and/or OS: cannot set FPE traps explicitly\n");
-*/
+void SetFPEtraps(void) {
+  /*
+    Error(MESSAGE, "SetFPEtraps",
+          "\nUnsupported CPU and/or OS: cannot set FPE traps explicitly\n");
+  */
 }
 
 #endif
 
-/* --- end else --                                     -------------- */
+  /* --- end else --                                     -------------- */
 
 #endif
 /* ------- end ------------------------------------------------------ */

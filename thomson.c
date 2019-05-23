@@ -13,7 +13,7 @@
        Wavelengths are given in nm, densities in m^-3, opacities in m^2,
        and emissivities in J s^-1 Hz^-1 sr^-1.
        --                                              -------------- */
- 
+
 #include <math.h>
 
 #include "rh.h"
@@ -24,22 +24,21 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
 
-
 /* ------- begin -------------------------- Thomson.c --------------- */
 
-void Thomson(double *chi)
-{
+void Thomson(double *chi) {
   register int k;
 
-  double sigma = 8.0*PI/3.0 * pow(Q_ELECTRON/(sqrt(4.0*PI*EPSILON_0) *
-					      (sqrt(M_ELECTRON)*CLIGHT)), 4);
+  double sigma = 8.0 * PI / 3.0 *
+                 pow(Q_ELECTRON / (sqrt(4.0 * PI * EPSILON_0) *
+                                   (sqrt(M_ELECTRON) * CLIGHT)),
+                     4);
 
-  for (k = 0;  k < atmos.Nspace;  k++)
+  for (k = 0; k < atmos.Nspace; k++)
     chi[k] = atmos.ne[k] * sigma;
 }
 /* ------- end ---------------------------- Thomson.c --------------- */

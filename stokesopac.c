@@ -14,7 +14,6 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
@@ -22,11 +21,9 @@ extern Spectrum spectrum;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- StokesK.c --------------- */
 
-void StokesK(int nspect, int k, double chi_I, double K[4][4])
-{
+void StokesK(int nspect, int k, double chi_I, double K[4][4]) {
   register int i, j;
 
   ActiveSet *as;
@@ -37,44 +34,45 @@ void StokesK(int nspect, int k, double chi_I, double K[4][4])
            =           =         =              =
            K' = (chi_c*1 + chi_l*Phi) / chi_I - 1,
 
-	   for wavelength# nspect, spatial point k, and ray mu.
+           for wavelength# nspect, spatial point k, and ray mu.
 
     See: Rees, Murphy, & Durrant, 1989, ApJ 339, 1093-1106.
 
          --                                            -------------- */
   as = &spectrum.as[nspect];
 
-  for (j = 0;  j < 4;  j++)
-    for (i = 0;  i < 4;  i++) K[j][i] = 0.0;
+  for (j = 0; j < 4; j++)
+    for (i = 0; i < 4; i++)
+      K[j][i] = 0.0;
 
   if (containsPolarized(as)) {
     K[0][1] = as->chi[atmos.Nspace + k];
-    K[0][2] = as->chi[2*atmos.Nspace + k];
-    K[0][3] = as->chi[3*atmos.Nspace + k];
+    K[0][2] = as->chi[2 * atmos.Nspace + k];
+    K[0][3] = as->chi[3 * atmos.Nspace + k];
 
     if (input.magneto_optical) {
-      K[1][2] = as->chip[2*atmos.Nspace + k];
+      K[1][2] = as->chip[2 * atmos.Nspace + k];
       K[1][3] = as->chip[atmos.Nspace + k];
       K[2][3] = as->chip[k];
     }
   }
   if (atmos.backgrflags[nspect].ispolarized) {
     K[0][1] += as->chi_c[atmos.Nspace + k];
-    K[0][2] += as->chi_c[2*atmos.Nspace + k];
-    K[0][3] += as->chi_c[3*atmos.Nspace + k];
+    K[0][2] += as->chi_c[2 * atmos.Nspace + k];
+    K[0][3] += as->chi_c[3 * atmos.Nspace + k];
 
     if (input.magneto_optical) {
-      K[1][2] += as->chip_c[2*atmos.Nspace + k];
+      K[1][2] += as->chip_c[2 * atmos.Nspace + k];
       K[1][3] += as->chip_c[atmos.Nspace + k];
       K[2][3] += as->chip_c[k];
     }
   }
   /* --- Divide by Stokes I opacity and fill lower diagonal part -- - */
 
-  for (j = 0;  j < 3;  j++) {
-    for (i = j+1;  i < 4;  i++) {
+  for (j = 0; j < 3; j++) {
+    for (i = j + 1; i < 4; i++) {
       K[j][i] /= chi_I;
-      K[i][j]  = K[j][i];
+      K[i][j] = K[j][i];
     }
   }
   /* --- Anti-symmetric magneto-optical elements --    -------------- */

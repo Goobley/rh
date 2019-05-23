@@ -13,7 +13,6 @@
        Current version checks for presence of file STOP_RH in running
        directory as suggested by Jo Bruls (KIS) --     -------------- */
 
-
 #include <stdio.h>
 
 #include "rh.h"
@@ -21,24 +20,20 @@
 
 #define STOP_REQUEST_FILE "STOP_RH"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- StopRequested.c --------- */
 
-bool_t StopRequested()
-{
+bool_t StopRequested() {
   const char routineName[] = "StopRequested";
 
   if (fopen(STOP_REQUEST_FILE, "r")) {
     sprintf(messageStr, "Stopping iterations because file %s is present",
-	  STOP_REQUEST_FILE);
+            STOP_REQUEST_FILE);
     Error(WARNING, routineName, messageStr);
     return TRUE;
   } else {

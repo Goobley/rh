@@ -6,7 +6,6 @@
 
        --------------------------                      ----------RH-- */
 
- 
 #include <stdlib.h>
 
 #include "rh.h"
@@ -20,7 +19,6 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
@@ -28,18 +26,16 @@ extern Geometry geometry;
 extern Spectrum spectrum;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- writeFlux.c ------------- */
 
-bool_t writeFlux(char *flux_output)
-{
+bool_t writeFlux(char *flux_output) {
   const char routineName[] = "writeFlux";
   register int mu, nspect;
 
-  bool_t  result = TRUE;
+  bool_t result = TRUE;
   double *flux, *wmuz;
-  FILE   *fp_flux;
-  XDR     xdrs;
+  FILE *fp_flux;
+  XDR xdrs;
 
   /* --- Write the radiative flux in the z-direction -- ------------ */
 
@@ -49,22 +45,23 @@ bool_t writeFlux(char *flux_output)
   }
   xdrstdio_create(&xdrs, fp_flux, XDR_ENCODE);
 
-  wmuz = (double *) malloc(atmos.Nrays * sizeof(double));
-  for (mu = 0;  mu < atmos.Nrays;  mu++)
+  wmuz = (double *)malloc(atmos.Nrays * sizeof(double));
+  for (mu = 0; mu < atmos.Nrays; mu++)
     wmuz[mu] = geometry.muz[mu] * geometry.wmu[mu];
 
-  flux = (double *) calloc(spectrum.Nspect, sizeof(double));
-  for (nspect = 0;  nspect < spectrum.Nspect;  nspect++) {
-    for (mu = 0;  mu < atmos.Nrays;  mu++)
+  flux = (double *)calloc(spectrum.Nspect, sizeof(double));
+  for (nspect = 0; nspect < spectrum.Nspect; nspect++) {
+    for (mu = 0; mu < atmos.Nrays; mu++)
       flux[nspect] += spectrum.I[nspect][mu] * wmuz[mu];
     flux[nspect] *= 2.0 * PI;
   }
-  result &= xdr_vector(&xdrs, (char *) flux, spectrum.Nspect,
-		       sizeof(double), (xdrproc_t) xdr_double);
-      
+  result &= xdr_vector(&xdrs, (char *)flux, spectrum.Nspect, sizeof(double),
+                       (xdrproc_t)xdr_double);
+
   xdr_destroy(&xdrs);
   fclose(fp_flux);
-  free(wmuz);  free(flux);
+  free(wmuz);
+  free(flux);
 
   return result;
 }

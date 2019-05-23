@@ -14,39 +14,30 @@
 #include "error.h"
 #include "inputs.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
 extern CommandLine commandline;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- setOptions.c ------------ */
 
-void setOptions(int argc, char *argv[])
-{
-  const  char routineName[] = "setOptions";
+void setOptions(int argc, char *argv[]) {
+  const char routineName[] = "setOptions";
   static char logfileName[MAX_LINE_SIZE], wavetable[MAX_LINE_SIZE];
 
   int Noption;
 
   Option theOptions[] = {
-    {"help", 1, FALSE, "", NULL, NULL, "Prints this message"},
-    {"input", 1, TRUE, "keyword.input",
-       commandline.keyword_input,
+      {"help", 1, FALSE, "", NULL, NULL, "Prints this message"},
+      {"input", 1, TRUE, "keyword.input", commandline.keyword_input,
        setcharValue, "File name for input keywords"},
-    {"logfile", 1, TRUE, "",
-       logfileName,
-       setcharValue, "File name log file"},
-    {"quiet", 1, FALSE, "FALSE", &commandline.quiet, setboolValue,
+      {"logfile", 1, TRUE, "", logfileName, setcharValue, "File name log file"},
+      {"quiet", 1, FALSE, "FALSE", &commandline.quiet, setboolValue,
        "Turns off warning messages"},
-    {"showkeywords", 1, FALSE, "FALSE", &commandline.showkeywords,
-       setboolValue,
-       "Show keyword values with current keyword input file"}
-  };
+      {"showkeywords", 1, FALSE, "FALSE", &commandline.showkeywords,
+       setboolValue, "Show keyword values with current keyword input file"}};
   Noption = sizeof(theOptions) / sizeof(Option);
 
   parse(argc, argv, Noption, theOptions);

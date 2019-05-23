@@ -18,17 +18,14 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 extern CommandLine commandline;
 
-
 /* ------- begin -------------------------- Error.c ----------------- */
 
 void Error(enum errorlevel level, const char *routineName,
-	   const char *messageStr)
-{
+           const char *messageStr) {
   char errorStr[MAX_MESSAGE_LENGTH];
   enum errorlevel defaultLevel = ERROR_LEVEL_1;
 
@@ -38,24 +35,26 @@ void Error(enum errorlevel level, const char *routineName,
       fprintf(commandline.logfile, "%s", (messageStr) ? messageStr : "");
     return;
   case WARNING:
-    fprintf(commandline.logfile, "\n-WARNING in routine %s\n %s\n",
-	    routineName, (messageStr) ? messageStr : " (Undocumented)\n");
+    fprintf(commandline.logfile, "\n-WARNING in routine %s\n %s\n", routineName,
+            (messageStr) ? messageStr : " (Undocumented)\n");
     return;
   default:
     if (level < defaultLevel) {
       fprintf(commandline.logfile, "\a\n-ERROR in routine %s\n %s \n %s\n",
-	      routineName,(messageStr) ? messageStr : " (Undocumented)\n",
-	      "Trying to continue.....");
+              routineName, (messageStr) ? messageStr : " (Undocumented)\n",
+              "Trying to continue.....");
       return;
     } else {
       sprintf(errorStr, "\a\n\n-FATAL_ERROR in routine %s\n %s \n %s\n",
-	      routineName,(messageStr) ? messageStr : " (Undocumented)\n",
-	      "Exiting.....");
+              routineName, (messageStr) ? messageStr : " (Undocumented)\n",
+              "Exiting.....");
 
       fprintf(commandline.logfile, "%s", errorStr);
-      if (commandline.logfile != stderr) fprintf(stderr, "%s", errorStr);
+      if (commandline.logfile != stderr)
+        fprintf(stderr, "%s", errorStr);
 
-      if (errno) perror(routineName);
+      if (errno)
+        perror(routineName);
       exit(level);
     }
   }

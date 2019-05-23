@@ -18,7 +18,7 @@
        even designation). This requires consistent naming of the levels
        in active and background models of the same species of course!
        --                                              -------------- */
- 
+
 #include <string.h>
 
 #include "rh.h"
@@ -28,28 +28,27 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- duplicateLevel.c -------- */
 
-bool_t duplicateLevel(Atom *atom, char *label)
-{
+bool_t duplicateLevel(Atom *atom, char *label) {
   const char routineName[] = "duplicateLevel";
   register int i;
 
-  char   multiplet[ATOM_LABEL_WIDTH+1], *ptr;
+  char multiplet[ATOM_LABEL_WIDTH + 1], *ptr;
   bool_t duplicate;
-  int    length;
+  int length;
 
-  if (atom == NULL) return FALSE;
+  if (atom == NULL)
+    return FALSE;
 
   strcpy(multiplet, label);
   ptr = multiplet + (strlen(multiplet) - 1);
-  while ((*ptr != 'E')  &&  (*ptr != 'O')  &&  (ptr > multiplet))  ptr--;
+  while ((*ptr != 'E') && (*ptr != 'O') && (ptr > multiplet))
+    ptr--;
   if (ptr > multiplet)
     *(ptr + 1) = '\0';
   else {
@@ -60,7 +59,7 @@ bool_t duplicateLevel(Atom *atom, char *label)
 
   length = strlen(multiplet);
   duplicate = FALSE;
-  for (i = 0;  i < atom->Nlevel;  i++) {
+  for (i = 0; i < atom->Nlevel; i++) {
 
     /* --- Compare up to the length of the multiplet -- ------------- */
 
@@ -75,48 +74,47 @@ bool_t duplicateLevel(Atom *atom, char *label)
 
 /* ------- begin -------------------------- duplicateLine.c --------- */
 
-bool_t duplicateLine(struct Atom *atom, char *labeli, char *labelj)
-{
+bool_t duplicateLine(struct Atom *atom, char *labeli, char *labelj) {
   const char routineName[] = "duplicateLine";
   register int kr;
 
-  char   multipleti[ATOM_LABEL_WIDTH+1], multipletj[ATOM_LABEL_WIDTH+1],
-        *ptr;
+  char multipleti[ATOM_LABEL_WIDTH + 1], multipletj[ATOM_LABEL_WIDTH + 1], *ptr;
   bool_t duplicate;
-  int    i, j, lengthi, lengthj;
+  int i, j, lengthi, lengthj;
 
-  if (atom == NULL) return FALSE;
+  if (atom == NULL)
+    return FALSE;
 
   strcpy(multipleti, labeli);
   ptr = multipleti + (strlen(multipleti) - 1);
-  while ((*ptr != 'E')  &&  (*ptr != 'O')  &&  (ptr > multipleti))  ptr--;
+  while ((*ptr != 'E') && (*ptr != 'O') && (ptr > multipleti))
+    ptr--;
   if (ptr > multipleti)
     *(ptr + 1) = '\0';
   else {
-    sprintf(messageStr,
-	    "Cannot determine parity of atomic level %s", labeli);
+    sprintf(messageStr, "Cannot determine parity of atomic level %s", labeli);
     Error(ERROR_LEVEL_1, routineName, messageStr);
   }
   lengthi = strlen(multipleti);
 
   strcpy(multipletj, labelj);
   ptr = multipletj + (strlen(multipletj) - 1);
-  while ((*ptr != 'E')  &&  (*ptr != 'O')  &&  (ptr > multipletj))  ptr--;
+  while ((*ptr != 'E') && (*ptr != 'O') && (ptr > multipletj))
+    ptr--;
   if (ptr > multipletj)
     *(ptr + 1) = '\0';
   else {
-    sprintf(messageStr,
-	    "Cannot determine parity of atomic level %s", labelj);
+    sprintf(messageStr, "Cannot determine parity of atomic level %s", labelj);
     Error(ERROR_LEVEL_1, routineName, messageStr);
   }
   lengthj = strlen(multipletj);
 
   duplicate = FALSE;
-  for (kr = 0;  kr < atom->Nline;  kr++) {
+  for (kr = 0; kr < atom->Nline; kr++) {
     i = atom->line[kr].i;
     j = atom->line[kr].j;
-    if (strncmp(atom->label[i], multipleti, lengthi) == 0  &&
-	strncmp(atom->label[j], multipletj, lengthj) == 0) {
+    if (strncmp(atom->label[i], multipleti, lengthi) == 0 &&
+        strncmp(atom->label[j], multipletj, lengthj) == 0) {
       duplicate = TRUE;
       break;
     }

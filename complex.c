@@ -8,24 +8,19 @@
 
 /* --- Complex operations needed in Voigt generator and FFT -- ------ */
 
-
 #include <stdlib.h>
 #include <math.h>
 
 #include "rh.h"
 #include "complex.h"
- 
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
-
 
 /* ------- begin -------------------------- complex.c --------------- */
 
-complex cmplx(double a, double b)
-{
+complex cmplx(double a, double b) {
   complex c;
 
   /* --- Return complex number z = a + bi --             ------------ */
@@ -39,13 +34,12 @@ complex cmplx(double a, double b)
 
 /* ------- begin -------------------------- cmplx_conj.c ------------ */
 
-complex cmplx_conj(complex a)
-{
+complex cmplx_conj(complex a) {
   complex c;
 
   /* --- Return complex conjugate --                     ------------ */
 
-  c.r =  a.r;
+  c.r = a.r;
   c.i = -a.i;
 
   return c;
@@ -54,14 +48,13 @@ complex cmplx_conj(complex a)
 
 /* ------- begin -------------------------- cmplx_mult.c ------------ */
 
-complex cmplx_mult(complex a, complex b)
-{
+complex cmplx_mult(complex a, complex b) {
   complex c;
 
   /* --- Multiply two complex numbers --                 ------------ */
 
-  c.r = a.r*b.r - a.i*b.i;
-  c.i = a.r*b.i + a.i*b.r;
+  c.r = a.r * b.r - a.i * b.i;
+  c.i = a.r * b.i + a.i * b.r;
 
   return c;
 }
@@ -69,8 +62,7 @@ complex cmplx_mult(complex a, complex b)
 
 /* ------- begin -------------------------- cmplx_scl.c ------------- */
 
-complex cmplx_sclr(double a, complex b)
-{
+complex cmplx_sclr(double a, complex b) {
   complex c;
 
   /* --- Multiply a complex number with a scalar --      ------------ */
@@ -84,16 +76,15 @@ complex cmplx_sclr(double a, complex b)
 
 /* ------- begin -------------------------- cmplx_div.c ------------- */
 
-complex cmplx_div(complex a, complex b)
-{
+complex cmplx_div(complex a, complex b) {
   complex c;
   double d;
 
   /* --- Divide two complex numbers --                   ------------ */
 
-  d = b.r*b.r + b.i*b.i;
-  c.r = (a.r*b.r + a.i*b.i) / d;
-  c.i = (a.i*b.r - a.r*b.i) / d;
+  d = b.r * b.r + b.i * b.i;
+  c.r = (a.r * b.r + a.i * b.i) / d;
+  c.i = (a.i * b.r - a.r * b.i) / d;
 
   return c;
 }
@@ -101,8 +92,7 @@ complex cmplx_div(complex a, complex b)
 
 /* ------- begin -------------------------- cmplx_exp.c ------------- */
 
-complex cmplx_exp(complex a)
-{
+complex cmplx_exp(complex a) {
   /* --- Complex exponential function --                 ------------ */
 
   return cmplx_sclr(exp(a.r), cmplx(cos(a.i), sin(a.i)));
@@ -111,8 +101,7 @@ complex cmplx_exp(complex a)
 
 /* ------- begin -------------------------- cmplx_add.c ------------- */
 
-complex cmplx_add(complex a, complex b)
-{
+complex cmplx_add(complex a, complex b) {
   complex c;
 
   /* --- Add two complex numbers --                      ------------ */
@@ -126,8 +115,7 @@ complex cmplx_add(complex a, complex b)
 
 /* ------- begin -------------------------- cmplx_addr.c ------------ */
 
-complex cmplx_addr(complex a, double b)
-{
+complex cmplx_addr(complex a, double b) {
   complex c;
 
   /* --- Add real number to complex --                   ------------ */
@@ -141,8 +129,7 @@ complex cmplx_addr(complex a, double b)
 
 /* ------- begin -------------------------- cmplx_subt.c ------------ */
 
-complex cmplx_subt(complex a, complex b)
-{
+complex cmplx_subt(complex a, complex b) {
   complex c;
 
   /* --- Subtract two complex numbers --                 ------------ */
@@ -155,19 +142,17 @@ complex cmplx_subt(complex a, complex b)
 
 /* ------- begin -------------------------- matrix_complex.c -------- */
 
-complex **matrix_complex(int Nrow, int Ncol)
-{
+complex **matrix_complex(int Nrow, int Ncol) {
   register int i;
 
-  int      typeSize = sizeof(complex), pointerSize = sizeof(complex *);
+  int typeSize = sizeof(complex), pointerSize = sizeof(complex *);
   complex *theMatrix, **Matrix;
 
-  theMatrix = (complex *)  calloc(Nrow * Ncol, typeSize);
-  Matrix    = (complex **) malloc(Nrow * pointerSize);
-  for (i = 0;  i < Nrow;  i++, theMatrix += Ncol)
+  theMatrix = (complex *)calloc(Nrow * Ncol, typeSize);
+  Matrix = (complex **)malloc(Nrow * pointerSize);
+  for (i = 0; i < Nrow; i++, theMatrix += Ncol)
     Matrix[i] = theMatrix;
 
   return Matrix;
 }
 /* ------- end ---------------------------- matrix_complex.c -------- */
-

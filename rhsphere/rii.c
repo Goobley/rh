@@ -32,21 +32,17 @@
 #include "atom.h"
 #include "error.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
-
 /* ------- begin -------------------------- RII.c ------------------- */
 
-double RII(double v_emit, double v_abs, double adamp, int mu1, int mu2)
-{
+double RII(double v_emit, double v_abs, double adamp, int mu1, int mu2) {
   const char routineName[] = "RII";
 
   Error(ERROR_LEVEL_2, routineName,
-	"Not yet implemented for SPHERICAL_SYMMETRY");
+        "Not yet implemented for SPHERICAL_SYMMETRY");
 
   return 0.0;
 }

@@ -9,18 +9,17 @@
 /* --- Find index of value in array (cf., Num. Recipes, p 91).
        Use previous value of ilow to hunt up or down list and bracket value.
        --                                              -------------- */
- 
+
 #include "rh.h"
 
 /* ------- begin -------------------------- Hunt.c ------------------ */
 
-void Hunt(int n, double *array, double value, int *ilow)
-{
+void Hunt(int n, double *array, double value, int *ilow) {
   bool_t ascend;
-  int    ihigh, index, increment;
+  int ihigh, index, increment;
 
-  ascend = (array[n-1] > array[0]) ? TRUE : FALSE;
-  if ((*ilow <= 0)  ||  (*ilow > n-1)) {
+  ascend = (array[n - 1] > array[0]) ? TRUE : FALSE;
+  if ((*ilow <= 0) || (*ilow > n - 1)) {
 
     /* --- Input guess not useful here, go to bisection --  --------- */
 
@@ -28,32 +27,40 @@ void Hunt(int n, double *array, double value, int *ilow)
     ihigh = n;
   } else {
 
-    /* --- Else hunt up or down to bracket value --    -------------- */ 
+    /* --- Else hunt up or down to bracket value --    -------------- */
 
     increment = 1;
     if (((value >= array[*ilow]) ? TRUE : FALSE) == ascend) {
       ihigh = *ilow + increment;
-      if (*ilow == n-1) return;
+      if (*ilow == n - 1)
+        return;
 
       /* --- Hunt up --                                -------------- */
 
       while (((value >= array[ihigh]) ? TRUE : FALSE) == ascend) {
-	*ilow = ihigh;
-	increment += increment;
-	ihigh = *ilow + increment;
-        if (ihigh >= n) { ihigh = n;  break; }
+        *ilow = ihigh;
+        increment += increment;
+        ihigh = *ilow + increment;
+        if (ihigh >= n) {
+          ihigh = n;
+          break;
+        }
       }
     } else {
       ihigh = *ilow;
-      if (*ilow == 0) return;
+      if (*ilow == 0)
+        return;
 
       /* --- Hunt down --                              -------------- */
 
       while (((value <= array[*ilow]) ? TRUE : FALSE) == ascend) {
-	ihigh = *ilow;
-	increment += increment;
-	*ilow = ihigh - increment;
-        if (*ilow <= 0) { *ilow = 0;  break; }
+        ihigh = *ilow;
+        increment += increment;
+        *ilow = ihigh - increment;
+        if (*ilow <= 0) {
+          *ilow = 0;
+          break;
+        }
       }
     }
   }
@@ -63,17 +70,17 @@ void Hunt(int n, double *array, double value, int *ilow)
     while (ihigh - *ilow > 1) {
       index = (ihigh + *ilow) >> 1;
       if (value >= array[index])
-	*ilow = index;
+        *ilow = index;
       else
-	ihigh = index;
+        ihigh = index;
     }
   } else {
     while (ihigh - *ilow > 1) {
       index = (ihigh + *ilow) >> 1;
       if (value <= array[index])
-	*ilow = index;
+        *ilow = index;
       else
-	ihigh = index;
+        ihigh = index;
     }
   }
 }
@@ -86,32 +93,32 @@ void Hunt(int n, double *array, double value, int *ilow)
  Note: The Num. Recipes routine does not give the correct index
        for values that are exactly equal to an array value!
        --                                              -------------- */
- 
+
 /* ------- begin -------------------------- Locate.c ---------------- */
 
-void Locate(int n, double *array, double value, int *ilow)
-{
+void Locate(int n, double *array, double value, int *ilow) {
   bool_t ascend;
-  int    ihigh, index;
+  int ihigh, index;
 
-  ascend = (array[n-1] > array[0]) ? TRUE : FALSE;
-  *ilow = 0;  ihigh = n;
+  ascend = (array[n - 1] > array[0]) ? TRUE : FALSE;
+  *ilow = 0;
+  ihigh = n;
 
   if (ascend) {
     while (ihigh - *ilow > 1) {
       index = (ihigh + *ilow) >> 1;
       if (value >= array[index])
-	*ilow = index;
+        *ilow = index;
       else
-	ihigh = index;
+        ihigh = index;
     }
   } else {
     while (ihigh - *ilow > 1) {
       index = (ihigh + *ilow) >> 1;
       if (value <= array[index])
-	*ilow = index;
+        *ilow = index;
       else
-	ihigh = index;
+        ihigh = index;
     }
   }
 }

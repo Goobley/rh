@@ -13,80 +13,75 @@
 #include "error.h"
 #include "inputs.h"
 
-
 /* --- Function prototypes --                          -------------- */
 
 void ShowUsage(char *programName, int Noption, Option *theOptions);
-
 
 /* --- Global variables --                             -------------- */
 
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- parse.c ----------------- */
 
-void parse(int argc, char *argv[], int Noption, Option *theOptions)
-{
+void parse(int argc, char *argv[], int Noption, Option *theOptions) {
   const char routineName[] = "parse";
   register int n, nopt;
 
   char **options, **values;
   bool_t recognized;
-  int    Narg = argc - 1, Nset;
+  int Narg = argc - 1, Nset;
 
   /* --- Break down the command line in option/value pairs -- ------- */
 
-  options = (char **) malloc(Narg * sizeof(char *));
-  values  = (char **) malloc(Narg * sizeof(char *));
+  options = (char **)malloc(Narg * sizeof(char *));
+  values = (char **)malloc(Narg * sizeof(char *));
 
   Nset = 0;
-  for (n = 1;  n <= Narg;  n++) {
+  for (n = 1; n <= Narg; n++) {
     if (argv[n][0] == '-') {
       options[Nset] = argv[n] + 1;
-      if (n < Narg  &&  argv[n+1][0] != '-') {
-	n++;
-	values[Nset] = argv[n];
+      if (n < Narg && argv[n + 1][0] != '-') {
+        n++;
+        values[Nset] = argv[n];
       } else
-	values[Nset] = NULL;
+        values[Nset] = NULL;
       Nset++;
     }
   }
   /* --- If called with -help show options and exit -- -------------- */
 
-  for (n = 0;  n < Nset;  n++) {
-    if (CHECK_OPTION(options[n], "help",
-		     theOptions[0].minlength)) {
+  for (n = 0; n < Nset; n++) {
+    if (CHECK_OPTION(options[n], "help", theOptions[0].minlength)) {
       ShowUsage(argv[0], Noption, theOptions);
     }
   }
   /* --- Match the command line options with internal options -- ---- */
-  
-  for (n = 0;  n < Nset;  n++) {
+
+  for (n = 0; n < Nset; n++) {
     recognized = FALSE;
-    for (nopt = 1;  nopt < Noption;  nopt++) {
+    for (nopt = 1; nopt < Noption; nopt++) {
       if (CHECK_OPTION(options[n], theOptions[nopt].name,
-		       theOptions[nopt].minlength)) {
+                       theOptions[nopt].minlength)) {
         recognized = TRUE;
 
         /* --- If a value was specified it is copied to the appropriate
                tag of the Option structure --          -------------- */
 
-	if (values[n] != NULL)
-	  strcpy(theOptions[nopt].value, values[n]);
-	else {
-	  if (theOptions[nopt].value_required) {
-          /* --- An error results if value is not given when required */
+        if (values[n] != NULL)
+          strcpy(theOptions[nopt].value, values[n]);
+        else {
+          if (theOptions[nopt].value_required) {
+            /* --- An error results if value is not given when required */
 
-	    sprintf(messageStr, "Option %s requires value",
-		    theOptions[nopt].name);
-	    Error(ERROR_LEVEL_2, routineName, messageStr);
-	  } else
-	    /* --- Options that require no value are assumed to be
+            sprintf(messageStr, "Option %s requires value",
+                    theOptions[nopt].name);
+            Error(ERROR_LEVEL_2, routineName, messageStr);
+          } else
+            /* --- Options that require no value are assumed to be
                    boolean and are set to TRUE --      -------------- */
 
-	    strcpy(theOptions[nopt].value, "TRUE");
-	}
+            strcpy(theOptions[nopt].value, "TRUE");
+        }
       }
     }
 
@@ -95,23 +90,23 @@ void parse(int argc, char *argv[], int Noption, Option *theOptions)
       Error(WARNING, routineName, messageStr);
     }
   }
-  /* --- Finally, set the internal options with either the 
+  /* --- Finally, set the internal options with either the
          command line specified values or their defaults -- --------- */
-  
-  for (nopt = 1;  nopt < Noption;  nopt++) {
-    if (theOptions[nopt].pointer != NULL) 
+
+  for (nopt = 1; nopt < Noption; nopt++) {
+    if (theOptions[nopt].pointer != NULL)
       (*theOptions[nopt].setValue)(theOptions[nopt].value,
-				   theOptions[nopt].pointer);
+                                   theOptions[nopt].pointer);
   }
 
-  free(options);  free(values);
+  free(options);
+  free(values);
 }
 /* ------- end ---------------------------- parse.c ----------------- */
 
 /* ---------------------------------------- ShowUsage.c ------------- */
 
-void ShowUsage(char *programName, int Noption, Option *theOptions)
-{
+void ShowUsage(char *programName, int Noption, Option *theOptions) {
   register int nopt;
 
   fprintf(stderr, " Usage:  %s [Options]\n", programName);
@@ -121,17 +116,16 @@ void ShowUsage(char *programName, int Noption, Option *theOptions)
          meaning --                                    -------------- */
 
   fprintf(stderr, "   -%s\n     [%s]\n\n", theOptions[0].name,
-	  theOptions[0].message);
+          theOptions[0].message);
 
-  for (nopt = 1;  nopt < Noption;  nopt++)
-    fprintf(stderr, "   -%s %s (default=%s)\n     [%s]\n\n", 
-	    theOptions[nopt].name,
-	    (theOptions[nopt].value_required) ? "value" : "",
-	    theOptions[nopt].value,
-            theOptions[nopt].message);
+  for (nopt = 1; nopt < Noption; nopt++)
+    fprintf(stderr, "   -%s %s (default=%s)\n     [%s]\n\n",
+            theOptions[nopt].name,
+            (theOptions[nopt].value_required) ? "value" : "",
+            theOptions[nopt].value, theOptions[nopt].message);
 
-  fprintf(stderr, 
-  "\n  Each option can be abreviated to its unambiguous length.\n\n");
+  fprintf(stderr,
+          "\n  Each option can be abreviated to its unambiguous length.\n\n");
 
   exit(EXIT_SUCCESS);
 }

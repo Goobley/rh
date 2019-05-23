@@ -20,29 +20,27 @@
 #include "statistics.h"
 #include "atomweights.h"
 
-#define COMMENT_CHAR       "#"
-#define RLK_RECORD_LENGTH  160
-#define RLK_LABEL_SIZE     10
-#define Q_WING             20.0
-#define MILLI              1.0E-03
-#define ANGSTROM_TO_NM     0.1
-
+#define COMMENT_CHAR "#"
+#define RLK_RECORD_LENGTH 160
+#define RLK_LABEL_SIZE 10
+#define Q_WING 20.0
+#define MILLI 1.0E-03
+#define ANGSTROM_TO_NM 0.1
 
 /* --- The format of the Kurucz linelists are 160 char long:
 
        FORMAT(F11.4,F7.3,F6.2,F12.3,F5.2,1X,A10,F12.3,F5.2,1X,A10,
-              3F6.2,A4,2I2,I3,F6.3,I3,F6.3,2I5,1X,A1,A1,1X,A1,A1,i1,A3.2I5,I6) 
+              3F6.2,A4,2I2,I3,F6.3,I3,F6.3,2I5,1X,A1,A1,1X,A1,A1,i1,A3.2I5,I6)
     --                                                 --------------- */
 
 typedef struct {
-  char   label[RLK_LABEL_SIZE+1];
-  int    lineNo;
+  char label[RLK_LABEL_SIZE + 1];
+  int lineNo;
   double E, g;
 } RLK_level;
 
-int  RLK_ascend(const void *v1, const void *v2);
+int RLK_ascend(const void *v1, const void *v2);
 void writeModelAtom(Atom *atom, FILE *fp_out);
-
 
 enum Topology topology = ONE_D_PLANE;
 
@@ -52,26 +50,24 @@ InputData input;
 CommandLine commandline;
 char messageStr[MAX_LINE_SIZE];
 
-
 /* ------- begin -------------------------- constructatom.c --------- */
 
-void main(int argc, char *argv[])
-{
+void main(int argc, char *argv[]) {
   register int n;
 
-  char   inputLine[RLK_RECORD_LENGTH+1], Gvalues[18+1],
-        *commentChar = COMMENT_CHAR, *labeli, *labelj;
-  int    Nline, Nread, Nrequired, checkPoint, hfs_i, hfs_j, gL_i, gL_j,
-         iso_dl, elemNo, *ll_index, *ul_index, lineNo, NmaxLevel;
-  double elem_code, lambda_air, Ji, Jj, Grad, GStark, GvdWaals, pti, Ej,
-         lambda, C;
-  FILE  *fp_kurucz;
+  char inputLine[RLK_RECORD_LENGTH + 1], Gvalues[18 + 1],
+      *commentChar = COMMENT_CHAR, *labeli, *labelj;
+  int Nline, Nread, Nrequired, checkPoint, hfs_i, hfs_j, gL_i, gL_j, iso_dl,
+      elemNo, *ll_index, *ul_index, lineNo, NmaxLevel;
+  double elem_code, lambda_air, Ji, Jj, Grad, GStark, GvdWaals, pti, Ej, lambda,
+      C;
+  FILE *fp_kurucz;
   Atom atom;
   RadTrans *line;
   RLK_Line *rlk_lines, *kptr;
   RLK_level *rlk_levels;
 
-  C = 2 * PI * (Q_ELECTRON/EPSILON_0) * (Q_ELECTRON/M_ELECTRON) / CLIGHT;
+  C = 2 * PI * (Q_ELECTRON / EPSILON_0) * (Q_ELECTRON / M_ELECTRON) / CLIGHT;
 
   commandline.quiet = FALSE;
   commandline.logfile = stderr;
@@ -92,75 +88,80 @@ void main(int argc, char *argv[])
   /* --- Count the number of lines --                  -------------- */
 
   Nline = 0;
-  while (fgets(inputLine, RLK_RECORD_LENGTH+1, fp_kurucz) != NULL)
-    if (*inputLine != *commentChar) Nline++;
+  while (fgets(inputLine, RLK_RECORD_LENGTH + 1, fp_kurucz) != NULL)
+    if (*inputLine != *commentChar)
+      Nline++;
   rewind(fp_kurucz);
 
-  rlk_lines  = (RLK_Line *)  malloc(Nline*sizeof(RLK_Line));
-  rlk_levels = (RLK_level *) malloc(2*Nline * sizeof(RLK_level));
+  rlk_lines = (RLK_Line *)malloc(Nline * sizeof(RLK_Line));
+  rlk_levels = (RLK_level *)malloc(2 * Nline * sizeof(RLK_level));
 
-  labeli = (char *) calloc(RLK_LABEL_SIZE+1, sizeof(char));
-  labelj = (char *) calloc(RLK_LABEL_SIZE+1, sizeof(char));
+  labeli = (char *)calloc(RLK_LABEL_SIZE + 1, sizeof(char));
+  labelj = (char *)calloc(RLK_LABEL_SIZE + 1, sizeof(char));
 
   /* --- Read lines from file --                       -------------- */
 
-  kptr   = rlk_lines;
+  kptr = rlk_lines;
   lineNo = 0;
-  while (fgets(inputLine, RLK_RECORD_LENGTH+1, fp_kurucz) != NULL) {
+  while (fgets(inputLine, RLK_RECORD_LENGTH + 1, fp_kurucz) != NULL) {
     if (*inputLine != *commentChar) {
-      Nread = sscanf(inputLine, "%lf %lf %lf %lf",
-		     &lambda_air, &kptr->gf, &elem_code, &kptr->Ei);
+      Nread = sscanf(inputLine, "%lf %lf %lf %lf", &lambda_air, &kptr->gf,
+                     &elem_code, &kptr->Ei);
 
       /* --- Verify the element ID --                  -------------- */
 
       if (kptr == rlk_lines) {
-	elemNo = (int) ceil(elem_code);
-	sprintf(messageStr, "Found element: %2s\n",
-		atomweight[elemNo - 1].ID);
+        elemNo = (int)ceil(elem_code);
+        sprintf(messageStr, "Found element: %2s\n", atomweight[elemNo - 1].ID);
         message(messageStr);
       } else {
-	if (elemNo != (int) ceil(elem_code)) {
-	  sprintf(messageStr, "Element ID is not the same for all lines.\n"
-		  "Found %2s, not %2s\n", atomweight[(int) ceil(elem_code)-1],
-		  atomweight[elemNo - 1].ID);
+        if (elemNo != (int)ceil(elem_code)) {
+          sprintf(messageStr,
+                  "Element ID is not the same for all lines.\n"
+                  "Found %2s, not %2s\n",
+                  atomweight[(int)ceil(elem_code) - 1],
+                  atomweight[elemNo - 1].ID);
           Error(ERROR_READING_INPUTFILE, argv[0], messageStr);
-	}
+        }
       }
 
       air_to_vacuum(1, &lambda_air, &kptr->lambda);
-      kptr->gf  = POW10(kptr->gf);
-      kptr->stage = (int) (100.0 * modf(elem_code, &pti));
-      kptr->pt_index = (int) pti;
+      kptr->gf = POW10(kptr->gf);
+      kptr->stage = (int)(100.0 * modf(elem_code, &pti));
+      kptr->pt_index = (int)pti;
 
-      Nread += sscanf(inputLine+36, "%lf", &Ji);
-      Nread += sscanf(inputLine+52, "%lf %lf", &Ej, &Jj);
-      kptr->gi = 2*Ji + 1;
-      kptr->gj = 2*Jj + 1;
+      Nread += sscanf(inputLine + 36, "%lf", &Ji);
+      Nread += sscanf(inputLine + 52, "%lf %lf", &Ej, &Jj);
+      kptr->gi = 2 * Ji + 1;
+      kptr->gj = 2 * Jj + 1;
 
       /* --- Convert to Joule --                       -------------- */
 
       kptr->Ei *= (HPLANCK * CLIGHT) / CM_TO_M;
       Ej *= (HPLANCK * CLIGHT) / CM_TO_M;
 
-      strncpy(labeli, inputLine+42, RLK_LABEL_SIZE);
-      strncpy(labelj, inputLine+70, RLK_LABEL_SIZE);
+      strncpy(labeli, inputLine + 42, RLK_LABEL_SIZE);
+      strncpy(labelj, inputLine + 70, RLK_LABEL_SIZE);
 
-      strncpy(Gvalues, inputLine+80, 18);
+      strncpy(Gvalues, inputLine + 80, 18);
       Nread += sscanf(Gvalues, "%lf %lf %lf", &Grad, &GStark, &GvdWaals);
-      if (Grad) kptr->Grad = POW10(Grad);
-      if (GStark) kptr->GStark = POW10(GStark) * CUBE(CM_TO_M);
-      if (GvdWaals) kptr->GvdWaals = POW10(GvdWaals) * CUBE(CM_TO_M);
+      if (Grad)
+        kptr->Grad = POW10(Grad);
+      if (GStark)
+        kptr->GStark = POW10(GStark) * CUBE(CM_TO_M);
+      if (GvdWaals)
+        kptr->GvdWaals = POW10(GvdWaals) * CUBE(CM_TO_M);
 
-      Nread += sscanf(inputLine+107, "%d", &kptr->isotope);
-      Nread += sscanf(inputLine+109, "%lf", &kptr->hfs_frac);
+      Nread += sscanf(inputLine + 107, "%d", &kptr->isotope);
+      Nread += sscanf(inputLine + 109, "%lf", &kptr->hfs_frac);
       kptr->hfs_frac = POW10(kptr->hfs_frac);
-      Nread += sscanf(inputLine+118, "%lf", &kptr->iso_frac);
+      Nread += sscanf(inputLine + 118, "%lf", &kptr->iso_frac);
       kptr->iso_frac = POW10(kptr->iso_frac);
-      Nread += sscanf(inputLine+124, "%5d%5d", &hfs_i, &hfs_j);
-      kptr->hfs_i = ((double) hfs_i) * MILLI * KBOLTZMANN;
-      kptr->hfs_j = ((double) hfs_j) * MILLI * KBOLTZMANN;
+      Nread += sscanf(inputLine + 124, "%5d%5d", &hfs_i, &hfs_j);
+      kptr->hfs_i = ((double)hfs_i) * MILLI * KBOLTZMANN;
+      kptr->hfs_j = ((double)hfs_j) * MILLI * KBOLTZMANN;
 
-      Nread += sscanf(inputLine+143, "%5d%5d", &gL_i, &gL_j);
+      Nread += sscanf(inputLine + 143, "%5d%5d", &gL_i, &gL_j);
       kptr->gL_i = gL_i * MILLI;
       kptr->gL_j = gL_j * MILLI;
 
@@ -168,35 +169,34 @@ void main(int argc, char *argv[])
       iso_dl = 0;
       kptr->iso_dl = iso_dl * MILLI * ANGSTROM_TO_NM;
 
-      rlk_levels[2*lineNo].lineNo = lineNo;
-      rlk_levels[2*lineNo].E = fabs(kptr->Ei);
-      rlk_levels[2*lineNo].g = kptr->gi;
-      strcpy(rlk_levels[2*lineNo].label, labeli); 
+      rlk_levels[2 * lineNo].lineNo = lineNo;
+      rlk_levels[2 * lineNo].E = fabs(kptr->Ei);
+      rlk_levels[2 * lineNo].g = kptr->gi;
+      strcpy(rlk_levels[2 * lineNo].label, labeli);
 
-      rlk_levels[2*lineNo + 1].lineNo = (lineNo) ? -lineNo : -Nline;
-      rlk_levels[2*lineNo + 1].E = fabs(Ej);
-      rlk_levels[2*lineNo + 1].g = kptr->gj;
-      strcpy(rlk_levels[2*lineNo + 1].label, labelj); 
+      rlk_levels[2 * lineNo + 1].lineNo = (lineNo) ? -lineNo : -Nline;
+      rlk_levels[2 * lineNo + 1].E = fabs(Ej);
+      rlk_levels[2 * lineNo + 1].g = kptr->gj;
+      strcpy(rlk_levels[2 * lineNo + 1].label, labelj);
 
-      checkNread(Nread, Nrequired=17, argv[0], checkPoint=1);
+      checkNread(Nread, Nrequired = 17, argv[0], checkPoint = 1);
       kptr++;
       lineNo++;
     }
   }
   fclose(fp_kurucz);
 
-  strcpy(atom.ID, atomweight[elemNo-1].ID);
-  atom.weight = atomweight[elemNo-1].weight;
+  strcpy(atom.ID, atomweight[elemNo - 1].ID);
+  atom.weight = atomweight[elemNo - 1].weight;
   sprintf(messageStr, "Read %d Kurucz lines for element %2s from file %s\n",
-	  Nline, atom.ID, argv[1]);
+          Nline, atom.ID, argv[1]);
   message(messageStr);
 
   message("Sorting energy levels...\n");
-  qsort((void *) rlk_levels, 2*Nline, sizeof(struct RLK_level),
-	RLK_ascend);
+  qsort((void *)rlk_levels, 2 * Nline, sizeof(struct RLK_level), RLK_ascend);
 
-  ll_index = (int *) calloc(Nline, sizeof(int));
-  ul_index = (int *) calloc(Nline, sizeof(int));
+  ll_index = (int *)calloc(Nline, sizeof(int));
+  ul_index = (int *)calloc(Nline, sizeof(int));
 
   /* --- Collect unique levels as distinguished by energy and
          statistical weight (in case of degeneracy) -- -------------- */
@@ -204,9 +204,9 @@ void main(int argc, char *argv[])
   message("Collecting unique levels... \n");
   atom.Nlevel = 1;
 
-  for (n = 1;  n < 2*Nline;  n++) {
-    if (rlk_levels[n].g != rlk_levels[atom.Nlevel-1].g || 
-	strcmp(rlk_levels[n].label, rlk_levels[atom.Nlevel-1].label)) {
+  for (n = 1; n < 2 * Nline; n++) {
+    if (rlk_levels[n].g != rlk_levels[atom.Nlevel - 1].g ||
+        strcmp(rlk_levels[n].label, rlk_levels[atom.Nlevel - 1].label)) {
 
       rlk_levels[atom.Nlevel].E = rlk_levels[n].E;
       rlk_levels[atom.Nlevel].g = rlk_levels[n].g;
@@ -216,20 +216,21 @@ void main(int argc, char *argv[])
       atom.Nlevel++;
     }
     if (rlk_levels[n].lineNo < 0)
-      ul_index[(-rlk_levels[n].lineNo) % Nline] = atom.Nlevel-1;
+      ul_index[(-rlk_levels[n].lineNo) % Nline] = atom.Nlevel - 1;
     else
-      ll_index[rlk_levels[n].lineNo] = atom.Nlevel-1;
+      ll_index[rlk_levels[n].lineNo] = atom.Nlevel - 1;
   }
   sprintf(messageStr, "Found %d unique levels\n", atom.Nlevel);
   message(messageStr);
 
-  if (NmaxLevel > 0) atom.Nlevel = MIN(atom.Nlevel, NmaxLevel);
-  atom.E = (double *) malloc(atom.Nlevel * sizeof(double));
-  atom.g = (double *) malloc(atom.Nlevel * sizeof(double));
-  atom.stage = (int *)   malloc(atom.Nlevel * sizeof(int));
-  atom.label = (char **) malloc(atom.Nlevel * sizeof(char *));
+  if (NmaxLevel > 0)
+    atom.Nlevel = MIN(atom.Nlevel, NmaxLevel);
+  atom.E = (double *)malloc(atom.Nlevel * sizeof(double));
+  atom.g = (double *)malloc(atom.Nlevel * sizeof(double));
+  atom.stage = (int *)malloc(atom.Nlevel * sizeof(int));
+  atom.label = (char **)malloc(atom.Nlevel * sizeof(char *));
 
-  for (n = 0;  n < atom.Nlevel;  n++) {
+  for (n = 0; n < atom.Nlevel; n++) {
     atom.E[n] = rlk_levels[n].E;
     atom.g[n] = rlk_levels[n].g;
 
@@ -238,24 +239,36 @@ void main(int argc, char *argv[])
     else
       atom.stage[n] = rlk_lines[rlk_levels[n].lineNo].stage;
 
-    atom.label[n] = (char *) calloc(ATOM_LABEL_WIDTH+1, sizeof(char));
+    atom.label[n] = (char *)calloc(ATOM_LABEL_WIDTH + 1, sizeof(char));
     switch (atom.stage[n]) {
-    case 0: sprintf(atom.label[n], "SI I ");    break;
-    case 1: sprintf(atom.label[n], "SI II ");   break;
-    case 2: sprintf(atom.label[n], "SI III ");  break;
-    case 3: sprintf(atom.label[n], "SI IV ");   break;
-    case 4: sprintf(atom.label[n], "SI V ");    break;
-    case 5: sprintf(atom.label[n], "SI VI ");   break;
+    case 0:
+      sprintf(atom.label[n], "SI I ");
+      break;
+    case 1:
+      sprintf(atom.label[n], "SI II ");
+      break;
+    case 2:
+      sprintf(atom.label[n], "SI III ");
+      break;
+    case 3:
+      sprintf(atom.label[n], "SI IV ");
+      break;
+    case 4:
+      sprintf(atom.label[n], "SI V ");
+      break;
+    case 5:
+      sprintf(atom.label[n], "SI VI ");
+      break;
     }
     strcat(atom.label[n], rlk_levels[n].label);
   }
   atom.Nfixed = atom.Ncont = atom.Nprd = 0;
 
-  atom.radtrans = (struct RadTrans *) malloc(Nline * sizeof(struct RadTrans));
+  atom.radtrans = (struct RadTrans *)malloc(Nline * sizeof(struct RadTrans));
   line = atom.radtrans;
   atom.Nline = 0;
   kptr = rlk_lines;
-  for (n = 0;  n < Nline;  n++) {
+  for (n = 0; n < Nline; n++) {
     initRadTrans(line);
     line->type = BOUNDBOUND;
     line->parent.atom = &atom;
@@ -264,7 +277,7 @@ void main(int argc, char *argv[])
     line->i = ll_index[n];
     line->j = ul_index[n];
 
-    if (line->i < atom.Nlevel  &&  line->j < atom.Nlevel) {
+    if (line->i < atom.Nlevel && line->j < atom.Nlevel) {
       lambda = kptr->lambda * NM_TO_M;
       line->Aji = C / SQ(lambda) * kptr->gf / kptr->gj;
       line->Bji = CUBE(lambda) / (2.0 * HPLANCK * CLIGHT) * line->Aji;
@@ -286,8 +299,8 @@ void main(int argc, char *argv[])
     }
     kptr++;
   }
-  atom.radtrans = (struct RadTrans *)
-    realloc(atom.radtrans, atom.Nline * sizeof(struct RadTrans));
+  atom.radtrans = (struct RadTrans *)realloc(
+      atom.radtrans, atom.Nline * sizeof(struct RadTrans));
 
   message("Writing model atom....\n");
   writeModelAtom(&atom, stdout);
@@ -296,10 +309,8 @@ void main(int argc, char *argv[])
 
 /* ------- begin -------------------------- RLK_ascend.c ------------ */
 
-int RLK_ascend(const void *v1, const void *v2)
-{
-  struct RLK_level *s1 = (struct RLK_level *) v1,
-                   *s2 = (struct RLK_level *) v2;
+int RLK_ascend(const void *v1, const void *v2) {
+  struct RLK_level *s1 = (struct RLK_level *)v1, *s2 = (struct RLK_level *)v2;
 
   if (s1->E < s2->E)
     return -1;

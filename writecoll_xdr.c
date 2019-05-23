@@ -9,7 +9,6 @@
 /* --- Routines for writing collisional rates to file.
        XDR (external data representation) version. --  -------------- */
 
- 
 #include <string.h>
 
 #include "rh.h"
@@ -23,32 +22,31 @@
 
 bool_t xdr_collrate(XDR *xdrs, Atom *atom);
 
-
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- writeCollisionRate.c ---- */
 
-bool_t writeCollisionRate(Atom *atom)
-{
+bool_t writeCollisionRate(Atom *atom) {
   const char routineName[] = "writeCollisionRate";
 
-  char  ratesfile[16];
+  char ratesfile[16];
   FILE *fp_rate;
-  XDR   xdrs;
+  XDR xdrs;
 
   /* --- Write collision rates --                      -------------- */
 
-  if (!strcmp(input.collrateFile, "none")) return FALSE;
+  if (!strcmp(input.collrateFile, "none"))
+    return FALSE;
 
-  sprintf(ratesfile, (atom->ID[1] == ' ') ?
-	  "collrate.%.1s.out" : "collrate.%.2s.out", atom->ID);
+  sprintf(ratesfile,
+          (atom->ID[1] == ' ') ? "collrate.%.1s.out" : "collrate.%.2s.out",
+          atom->ID);
 
-  if ((fp_rate = fopen(ratesfile, "w" )) == NULL) {
+  if ((fp_rate = fopen(ratesfile, "w")) == NULL) {
     sprintf(messageStr, "Unable to open output file %s", ratesfile);
     Error(ERROR_LEVEL_1, routineName, messageStr);
     return FALSE;
@@ -68,22 +66,23 @@ bool_t writeCollisionRate(Atom *atom)
 
 /* ------- begin -------------------------- readCollisionRate.c ----- */
 
-bool_t readCollisionRate(Atom *atom)
-{
+bool_t readCollisionRate(Atom *atom) {
   const char routineName[] = "readCollisionRate";
 
-  char  ratesfile[16];
+  char ratesfile[16];
   FILE *fp_rate;
-  XDR   xdrs;
+  XDR xdrs;
 
-  if (!strcmp(input.collrateFile, "none")) return FALSE;
+  if (!strcmp(input.collrateFile, "none"))
+    return FALSE;
 
-  sprintf(ratesfile, (atom->ID[1] == ' ') ?
-	  "collrate.%.1s.out" : "collrate.%.2s.out", atom->ID);
+  sprintf(ratesfile,
+          (atom->ID[1] == ' ') ? "collrate.%.1s.out" : "collrate.%.2s.out",
+          atom->ID);
 
   /* --- Read collision rates --                       -------------- */
 
-  if ((fp_rate = fopen(ratesfile, "r" )) == NULL) {
+  if ((fp_rate = fopen(ratesfile, "r")) == NULL) {
     sprintf(messageStr, "Unable to open input file %s", ratesfile);
     Error(ERROR_LEVEL_1, routineName, messageStr);
     return FALSE;
@@ -102,15 +101,14 @@ bool_t readCollisionRate(Atom *atom)
 
 /* ------- begin -------------------------- xdr_collrate.c ---------- */
 
-bool_t xdr_collrate(XDR *xdrs, Atom *atom)
-{
+bool_t xdr_collrate(XDR *xdrs, Atom *atom) {
   register int ij;
 
   bool_t result = TRUE;
 
-  for (ij = 0;  ij < SQ(atom->Nlevel);  ij++) {
-    result &= xdr_vector(xdrs, (char *) atom->C[ij], atmos.Nspace,
-			 sizeof(double), (xdrproc_t) xdr_double);
+  for (ij = 0; ij < SQ(atom->Nlevel); ij++) {
+    result &= xdr_vector(xdrs, (char *)atom->C[ij], atmos.Nspace,
+                         sizeof(double), (xdrproc_t)xdr_double);
   }
   return result;
 }

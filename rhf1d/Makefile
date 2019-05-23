@@ -7,10 +7,12 @@
 ##     --------------------------                      ----------RH-- ##
 
 include ../Makefile.config
+CFLAGS += -I../
+LDFLAGS += -L../
 
 ## --- If no FORTRAN compiler is available remove -lrh_f90 in following
 
-      LIBS = -lrh -lrh_f90
+      LIBS = -lrh -lrh_f90 -lm -lpthread
 
 
 ## --- Define groups of object files --                -------------- ##

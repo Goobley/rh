@@ -9,7 +9,6 @@
 /* --- Writes atomic data of background opacity package to output file.
        XDR (external data representation) version. --  -------------- */
 
- 
 #include <string.h>
 
 #include "rh.h"
@@ -20,26 +19,24 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- writeMetals.c ----------- */
 
-bool_t writeMetals(char *fileName)
-{
+bool_t writeMetals(char *fileName) {
   const char routineName[] = "writeMetals";
   register int n;
 
-  int    result = TRUE, Nmetal;
+  int result = TRUE, Nmetal;
   Atom *atom;
-  FILE  *fp_out;
-  XDR    xdrs;
+  FILE *fp_out;
+  XDR xdrs;
 
-  if (!strcmp(fileName, "none")) return result;
+  if (!strcmp(fileName, "none"))
+    return result;
 
   if ((fp_out = fopen(fileName, "w")) == NULL) {
     sprintf(messageStr, "Unable to open output file %s", fileName);
@@ -54,9 +51,9 @@ bool_t writeMetals(char *fileName)
 
   Nmetal = atmos.Natom - 1 - atmos.Nactiveatom;
   result &= xdr_int(&xdrs, &Nmetal);
-  for (n = 1;  n < atmos.Natom;  n++) {
+  for (n = 1; n < atmos.Natom; n++) {
     atom = &atmos.atoms[n];
-    if (!atom->active) 
+    if (!atom->active)
       result &= xdr_atom(&xdrs, atom);
   }
 

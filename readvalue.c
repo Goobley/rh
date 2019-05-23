@@ -48,12 +48,9 @@
 #include "error.h"
 #include "inputs.h"
 
-
 #define COMMENT_CHAR "#"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
@@ -61,54 +58,52 @@ extern InputData input;
 extern CommandLine commandline;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- readValues.c ------------ */
 
-void readValues(char *fp_keyword, int Nkeyword,	Keyword *theKeywords)
-{
+void readValues(char *fp_keyword, int Nkeyword, Keyword *theKeywords) {
   const char routineName[] = "readValues";
   register int n;
 
-  char   keyword[MAX_KEYWORD_LENGTH], value[MAX_VALUE_LENGTH],
-         line[MAX_LINE_SIZE];
+  char keyword[MAX_KEYWORD_LENGTH], value[MAX_VALUE_LENGTH],
+      line[MAX_LINE_SIZE];
   bool_t recognized, exit_on_EOF;
-  int    nread;
+  int nread;
 
   /* --- Read input data line-by-line --                ------------- */
-  while (getLineString(&fp_keyword, COMMENT_CHAR, line, exit_on_EOF=FALSE) != EOF) {
+  while (getLineString(&fp_keyword, COMMENT_CHAR, line, exit_on_EOF = FALSE) !=
+         EOF) {
     if ((nread = sscanf(line, "%s = %s", keyword, value)) != 2) {
       sprintf(messageStr, "Missing input value for keyword %s", keyword);
       Error(ERROR_LEVEL_2, routineName, messageStr);
     }
 
     recognized = FALSE;
-    for (n = 0;  n < Nkeyword;  n++) {
+    for (n = 0; n < Nkeyword; n++) {
       if (!strcmp(keyword, theKeywords[n].keyword)) {
-	recognized = TRUE;
-	if (theKeywords[n].type == KEYWORD_DEFAULT) {
-	  sprintf(messageStr,
-		   "Overriding default value %s for keyword %s with %s",
-		   theKeywords[n].value, theKeywords[n].keyword, value);
-	  Error(WARNING, routineName, messageStr);
-	}
+        recognized = TRUE;
+        if (theKeywords[n].type == KEYWORD_DEFAULT) {
+          sprintf(messageStr,
+                  "Overriding default value %s for keyword %s with %s",
+                  theKeywords[n].value, theKeywords[n].keyword, value);
+          Error(WARNING, routineName, messageStr);
+        }
         strcpy(theKeywords[n].value, value);
-	theKeywords[n].set = TRUE;
+        theKeywords[n].set = TRUE;
         break;
       }
     }
     if (!recognized) {
-      sprintf(messageStr, "Did not recognize keyword %s with value %s",
-	       keyword, value);
+      sprintf(messageStr, "Did not recognize keyword %s with value %s", keyword,
+              value);
       Error(WARNING, routineName, messageStr);
     }
   }
   /* --- Go through all possible keywords and set their values -- --- */
 
-  for (n = 0;  n < Nkeyword;  n++) {
-    if ((!theKeywords[n].set) &&
-	 (theKeywords[n].type == KEYWORD_REQUIRED)) {
+  for (n = 0; n < Nkeyword; n++) {
+    if ((!theKeywords[n].set) && (theKeywords[n].type == KEYWORD_REQUIRED)) {
       sprintf(messageStr, "Missing input value for required keyword %s",
-	      theKeywords[n].keyword);
+              theKeywords[n].keyword);
       Error(ERROR_LEVEL_2, routineName, messageStr);
     }
     (*theKeywords[n].setValue)(theKeywords[n].value, theKeywords[n].pointer);
@@ -118,21 +113,26 @@ void readValues(char *fp_keyword, int Nkeyword,	Keyword *theKeywords)
 
 /* ------- end ---------------------------- showValues.c ------------ */
 
-void showValues(int Nkeyword, Keyword *theKeywords)
-{
+void showValues(int Nkeyword, Keyword *theKeywords) {
   register int n;
 
   char typeStr[MAX_VALUE_LENGTH], *value;
-  int  length;
+  int length;
 
-  fprintf(stderr, "\n  %-20s = %-30.30s %-18.18s %s\n\n",
-	  "KEYWORD", "VALUE", "(KEYWORD_TYPE)", "SET");
+  fprintf(stderr, "\n  %-20s = %-30.30s %-18.18s %s\n\n", "KEYWORD", "VALUE",
+          "(KEYWORD_TYPE)", "SET");
 
-  for (n = 0;  n < Nkeyword;  n++) {
+  for (n = 0; n < Nkeyword; n++) {
     switch (theKeywords[n].type) {
-    case KEYWORD_REQUIRED: strcpy(typeStr, "(KEYWORD_REQUIRED)");  break;
-    case KEYWORD_DEFAULT:  strcpy(typeStr, "(KEYWORD_DEFAULT)");   break;
-    case KEYWORD_OPTIONAL: strcpy(typeStr, "(KEYWORD_OPTIONAL)");  break;
+    case KEYWORD_REQUIRED:
+      strcpy(typeStr, "(KEYWORD_REQUIRED)");
+      break;
+    case KEYWORD_DEFAULT:
+      strcpy(typeStr, "(KEYWORD_DEFAULT)");
+      break;
+    case KEYWORD_OPTIONAL:
+      strcpy(typeStr, "(KEYWORD_OPTIONAL)");
+      break;
     }
     /* --- Display end rather than begin of keyword value if string is
            too long --                                 -------------- */
@@ -142,9 +142,8 @@ void showValues(int Nkeyword, Keyword *theKeywords)
     else
       value = theKeywords[n].value;
 
-    fprintf(stderr, "  %-20s = %-30.30s %-18.18s  %s\n",
-	    theKeywords[n].keyword, value, typeStr,
-	    (theKeywords[n].set) ? "X" : "");
+    fprintf(stderr, "  %-20s = %-30.30s %-18.18s  %s\n", theKeywords[n].keyword,
+            value, typeStr, (theKeywords[n].set) ? "X" : "");
   }
   exit(EXIT_SUCCESS);
 }
@@ -152,16 +151,14 @@ void showValues(int Nkeyword, Keyword *theKeywords)
 
 /* ------- begin -------------------------- setcharValue.c ---------- */
 
-void setcharValue(char *value, void *pointer)
-{
-  strcpy((char *) pointer, value);
+void setcharValue(char *value, void *pointer) {
+  strcpy((char *)pointer, value);
 }
 /* ------- end ---------------------------- setcharValue.c ---------- */
 
 /* ------- begin -------------------------- setintValue.c ----------- */
 
-void setintValue(char *value, void *pointer)
-{
+void setintValue(char *value, void *pointer) {
   int intvalue = atoi(value);
 
   memcpy(pointer, &intvalue, sizeof(int));
@@ -170,8 +167,7 @@ void setintValue(char *value, void *pointer)
 
 /* ------- begin -------------------------- setdoubleValue.c -------- */
 
-void setdoubleValue(char *value, void *pointer)
-{
+void setdoubleValue(char *value, void *pointer) {
   double doublevalue = atof(value);
 
   memcpy(pointer, &doublevalue, sizeof(double));
@@ -180,8 +176,7 @@ void setdoubleValue(char *value, void *pointer)
 
 /* ------- begin -------------------------- setboolValue.c ---------- */
 
-void setboolValue(char *value, void *pointer)
-{
+void setboolValue(char *value, void *pointer) {
   bool_t boolvalue = (strstr(value, "TRUE")) ? TRUE : FALSE;
 
   memcpy(pointer, &boolvalue, sizeof(bool_t));
@@ -190,28 +185,36 @@ void setboolValue(char *value, void *pointer)
 
 /* ------- begin -------------------------- setAngleSet.c ----------- */
 
-void setAngleSet(char *value, void *pointer)
-{
-  int  Nread, Ninclination, Nazimuth;
+void setAngleSet(char *value, void *pointer) {
+  int Nread, Ninclination, Nazimuth;
   AngleSet angleSet;
 
   initAngleSet(&angleSet);
 
-  if (!strcmp(value, "SET_VERTICAL")) angleSet.set = SET_VERTICAL;
-  else if  (!strcmp(value, "SET_A2")) angleSet.set = SET_A2;
-  else if  (!strcmp(value, "SET_A4")) angleSet.set = SET_A4;
-  else if  (!strcmp(value, "SET_A6")) angleSet.set = SET_A6;
-  else if  (!strcmp(value, "SET_A8")) angleSet.set = SET_A8;
-  else if  (!strcmp(value, "SET_B4")) angleSet.set = SET_B4;
-  else if  (!strcmp(value, "SET_B6")) angleSet.set = SET_B6;
-  else if  (!strcmp(value, "SET_B8")) angleSet.set = SET_B8;
-  else if  (!strcmp(value, "NO_SET")) angleSet.set = NO_SET;
+  if (!strcmp(value, "SET_VERTICAL"))
+    angleSet.set = SET_VERTICAL;
+  else if (!strcmp(value, "SET_A2"))
+    angleSet.set = SET_A2;
+  else if (!strcmp(value, "SET_A4"))
+    angleSet.set = SET_A4;
+  else if (!strcmp(value, "SET_A6"))
+    angleSet.set = SET_A6;
+  else if (!strcmp(value, "SET_A8"))
+    angleSet.set = SET_A8;
+  else if (!strcmp(value, "SET_B4"))
+    angleSet.set = SET_B4;
+  else if (!strcmp(value, "SET_B6"))
+    angleSet.set = SET_B6;
+  else if (!strcmp(value, "SET_B8"))
+    angleSet.set = SET_B8;
+  else if (!strcmp(value, "NO_SET"))
+    angleSet.set = NO_SET;
 
   else if (strstr(value, "SET_GL_")) {
     if (sscanf(value, "SET_GL_%dX%d", &Ninclination, &Nazimuth) != 2) {
       sprintf(messageStr,
-	      "\n  Invalid Gauss-Legandre format for keyword ANGLE_SET: %s",
-	      value);
+              "\n  Invalid Gauss-Legandre format for keyword ANGLE_SET: %s",
+              value);
       Error(ERROR_LEVEL_2, "setAngleSet", messageStr);
     }
     angleSet.set = SET_GL;
@@ -219,34 +222,30 @@ void setAngleSet(char *value, void *pointer)
     angleSet.Nazimuth = Nazimuth;
 
     sprintf(messageStr,
-	    "\n  Found Gauss-Legendre angleset with "
-	    "Ninclination = %d and Nazimuth = %d",
-	    Ninclination, Nazimuth);
+            "\n  Found Gauss-Legendre angleset with "
+            "Ninclination = %d and Nazimuth = %d",
+            Ninclination, Nazimuth);
     Error(MESSAGE, "setAngleSet", messageStr);
 
-    if (Ninclination <= 0  || Ninclination > NMAXINCLINATION) {
-      sprintf(messageStr,
-	      "\n  Invalid value for Ninclination in angleset: %d",
-	      Ninclination);
+    if (Ninclination <= 0 || Ninclination > NMAXINCLINATION) {
+      sprintf(messageStr, "\n  Invalid value for Ninclination in angleset: %d",
+              Ninclination);
       Error(ERROR_LEVEL_2, "setAngleSet", messageStr);
     }
-    if (Nazimuth <= 0  || Nazimuth > NMAXAZIMUTH) {
-      sprintf(messageStr,
-	      "\n  Invalid value for Nazimuth in angleset: %d",
-	      Nazimuth);
+    if (Nazimuth <= 0 || Nazimuth > NMAXAZIMUTH) {
+      sprintf(messageStr, "\n  Invalid value for Nazimuth in angleset: %d",
+              Nazimuth);
       Error(ERROR_LEVEL_2, "setAngleSet", messageStr);
     }
   } else {
-    sprintf(messageStr,
-	    "\n  Invalid value for keyword ANGLE_SET: %s", value);
+    sprintf(messageStr, "\n  Invalid value for keyword ANGLE_SET: %s", value);
     Error(ERROR_LEVEL_2, "setAngleSet", messageStr);
   }
   memcpy(pointer, &angleSet, sizeof(AngleSet));
 }
 /* ------- begin -------------------------- initAngleSet.c ---------- */
 
-void initAngleSet(AngleSet *angleSet)
-{
+void initAngleSet(AngleSet *angleSet) {
   angleSet->set = NO_SET;
   angleSet->Ninclination = 0;
   angleSet->Nazimuth = 0;
@@ -255,8 +254,7 @@ void initAngleSet(AngleSet *angleSet)
 
 /* ------- begin -------------------------- setStokesMode.c --------- */
 
-void setStokesMode(char *value, void *pointer)
-{
+void setStokesMode(char *value, void *pointer) {
   const char routineName[] = "setStokesMode";
 
   enum StokesMode StokesMode;
@@ -270,19 +268,16 @@ void setStokesMode(char *value, void *pointer)
   else if (!strcmp(value, "FULL_STOKES"))
     StokesMode = FULL_STOKES;
   else {
-    sprintf(messageStr,
-	     "Invalid value for keyword STOKES_MODE: %s", value);
+    sprintf(messageStr, "Invalid value for keyword STOKES_MODE: %s", value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
   memcpy(pointer, &StokesMode, sizeof(enum_t));
 }
 /* ------- end ---------------------------- setStokesMode.c --------- */
 
-
 /* ------- begin ---------------------- set_S_interpolation.c ------- */
 
-void set_S_interpolation(char *value, void *pointer)
-{
+void set_S_interpolation(char *value, void *pointer) {
   const char routineName[] = "set_S_interpolation";
 
   enum S_interpol interpolation;
@@ -296,8 +291,7 @@ void set_S_interpolation(char *value, void *pointer)
   else if (!strcmp(value, "CUBIC_HERMITE"))
     interpolation = CUBIC_HERMITE;
   else {
-    sprintf(messageStr,
-	     "Invalid value for keyword S_INTERPOLATION: %s", value);
+    sprintf(messageStr, "Invalid value for keyword S_INTERPOLATION: %s", value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
   memcpy(pointer, &interpolation, sizeof(enum S_interpol));
@@ -306,8 +300,7 @@ void set_S_interpolation(char *value, void *pointer)
 
 /* ------- begin ---------------------- set_S_interpolation_stokes.c ------- */
 
-void set_S_interpolation_stokes(char *value, void *pointer)
-{
+void set_S_interpolation_stokes(char *value, void *pointer) {
   const char routineName[] = "set_S_interpolation_stokes";
 
   enum S_interpol_stokes interpolation;
@@ -317,19 +310,17 @@ void set_S_interpolation_stokes(char *value, void *pointer)
   else if (!strcmp(value, "DELO_PARABOLIC"))
     interpolation = DELO_PARABOLIC;
   else {
-    sprintf(messageStr,
-	     "Invalid value for keyword S_INTERPOLATION_STOKES: %s", value);
+    sprintf(messageStr, "Invalid value for keyword S_INTERPOLATION_STOKES: %s",
+            value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
   memcpy(pointer, &interpolation, sizeof(enum S_interpol));
 }
 /* ------- end -----------------------set_S_interpolation_stokes.c ------- */
 
-
 /* ------- begin -------------------------- setPRDangle.c --------- */
 
-void setPRDangle(char *value, void *pointer)
-{
+void setPRDangle(char *value, void *pointer) {
   const char routineName[] = "setPRDangle";
 
   enum PRDangle PRD_angle_dep;
@@ -341,28 +332,26 @@ void setPRDangle(char *value, void *pointer)
   else if (!strcmp(value, "PRD_ANGLE_DEP"))
     PRD_angle_dep = PRD_ANGLE_DEP;
   else {
-    sprintf(messageStr,
-	     "Invalid value for keyword PRD_ANGLE_DEP: %s", value);
+    sprintf(messageStr, "Invalid value for keyword PRD_ANGLE_DEP: %s", value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
   memcpy(pointer, &PRD_angle_dep, sizeof(enum_t));
 }
-/* ------- end ---------------------------- setPRDangle.c --------- */
+  /* ------- end ---------------------------- setPRDangle.c --------- */
 
-/* ------- begin -------------------------- setThreadValue.c -------- */
+  /* ------- begin -------------------------- setThreadValue.c -------- */
 
 #define N_THREAD_LIMIT 32
 
-void setThreadValue(char *value, void *pointer)
-{
+void setThreadValue(char *value, void *pointer) {
   const char routineName[] = "setThreadValue";
 
   int Nthreads = atoi(value), return_value;
 
   if (Nthreads > N_THREAD_LIMIT) {
     sprintf(messageStr,
-	    "Value of keyword N_THREADS (%d) larger than allowed limit (%d)",
-	    Nthreads, N_THREAD_LIMIT);
+            "Value of keyword N_THREADS (%d) larger than allowed limit (%d)",
+            Nthreads, N_THREAD_LIMIT);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   } else if (Nthreads < 1) {
     Nthreads = 1;
@@ -377,17 +366,16 @@ void setThreadValue(char *value, void *pointer)
           - PTHREAD_CREATE_JOINABLE for detach state
           - PTHREAD_INHERIT_SCHED   for scheduling inheritance
           - SCHED_OTHER             for scheduling policy
-	  ---                                          -------------- */
+          ---                                          -------------- */
 
     pthread_attr_init(&input.thread_attr);
 
     if (pthread_attr_setscope(&input.thread_attr, PTHREAD_SCOPE_PROCESS))
       Error(WARNING, routineName, "Non-default thread scope");
     if (pthread_attr_setdetachstate(&input.thread_attr,
-				    PTHREAD_CREATE_JOINABLE))
+                                    PTHREAD_CREATE_JOINABLE))
       Error(WARNING, routineName, "Non-default thread detach state");
-    if (pthread_attr_setinheritsched(&input.thread_attr,
-				     PTHREAD_INHERIT_SCHED))
+    if (pthread_attr_setinheritsched(&input.thread_attr, PTHREAD_INHERIT_SCHED))
       Error(WARNING, routineName, "Non-default thread scheduling inheritance");
     if (pthread_attr_setschedpolicy(&input.thread_attr, SCHED_OTHER))
       Error(WARNING, routineName, "Non-default thread scheduling policy");
@@ -396,7 +384,7 @@ void setThreadValue(char *value, void *pointer)
 
     if ((return_value = pthread_setconcurrency(Nthreads)))
       Error(ERROR_LEVEL_2, routineName,
-	    "Failed to set concurrency level for threads.");
+            "Failed to set concurrency level for threads.");
     else {
       sprintf(messageStr, "Setting thread concurrency to %d", Nthreads);
       Error(WARNING, routineName, messageStr);
@@ -409,8 +397,7 @@ void setThreadValue(char *value, void *pointer)
 
 /* ------- begin -------------------------- setInterpolate_3D.c ----- */
 
-void setInterpolate_3D(char *value, void *pointer)
-{
+void setInterpolate_3D(char *value, void *pointer) {
   const char routineName[] = "setInterpolate_3D";
 
   enum order_3D order;
@@ -420,8 +407,8 @@ void setInterpolate_3D(char *value, void *pointer)
   else if (!strcmp(value, "BICUBIC_3D"))
     order = BICUBIC_3D;
   else {
-    sprintf(messageStr,
-	    "\n  Invalid value for keyword INTERPOLATE_3D: %s", value);
+    sprintf(messageStr, "\n  Invalid value for keyword INTERPOLATE_3D: %s",
+            value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
   memcpy(pointer, &order, sizeof(enum order_3D));
@@ -430,8 +417,7 @@ void setInterpolate_3D(char *value, void *pointer)
 
 /* ------- begin -------------------------- setstartValue.c --------- */
 
-void setstartValue(char *value, void *pointer)
-{
+void setstartValue(char *value, void *pointer) {
   const char routineName[] = "setStartValue";
 
   enum solution startvalue;
@@ -441,8 +427,7 @@ void setstartValue(char *value, void *pointer)
   else if (!strcmp(value, "OLD_J"))
     startvalue = OLD_J;
   else {
-    sprintf(messageStr,
-             "Invalid value for keyword STARTING_J: %s", value);
+    sprintf(messageStr, "Invalid value for keyword STARTING_J: %s", value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
 
@@ -452,8 +437,7 @@ void setstartValue(char *value, void *pointer)
 
 /* ------- begin -------------------------- setnesolution.c --------- */
 
-void setnesolution(char *value, void *pointer)
-{
+void setnesolution(char *value, void *pointer) {
   const char routineName[] = "setnesolution";
 
   enum ne_solution nesolution;
@@ -465,8 +449,7 @@ void setnesolution(char *value, void *pointer)
   else if (!strcmp(value, "ITERATION")) {
     nesolution = ITERATION;
   } else {
-    sprintf(messageStr,
-             "Invalid value for keyword SOLVE_NE: %s", value);
+    sprintf(messageStr, "Invalid value for keyword SOLVE_NE: %s", value);
     Error(ERROR_LEVEL_2, routineName, messageStr);
   }
 

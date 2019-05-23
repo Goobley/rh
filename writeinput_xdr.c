@@ -8,7 +8,6 @@
 
 /* --- XDR (external data representation) version. --  -------------- */
 
-
 #include <string.h>
 
 #include "rh.h"
@@ -19,13 +18,11 @@
 #include "inputs.h"
 #include "xdr.h"
 
-#define  INPUT_DOT_OUT  "input.out"
-
+#define INPUT_DOT_OUT "input.out"
 
 /* --- Function prototypes --                          -------------- */
 
 int is_big_endian(void);
-
 
 /* --- Global variables --                             -------------- */
 
@@ -34,38 +31,37 @@ extern Spectrum spectrum;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- writeInput.c ------------ */
 
-void writeInput(void)
-{
+void writeInput(void) {
   const char routineName[] = "writeInput";
 
-  bool_t  result=TRUE, PRD_angle_dep, XRD, big_endian;
-  FILE   *fp_out;
-  XDR     xdrs;
+  bool_t result = TRUE, PRD_angle_dep, XRD, big_endian;
+  FILE *fp_out;
+  XDR xdrs;
 
-  if (!strcmp(INPUT_DOT_OUT, "none")) return;
+  if (!strcmp(INPUT_DOT_OUT, "none"))
+    return;
 
   if ((fp_out = fopen(INPUT_DOT_OUT, "w")) == NULL) {
-    sprintf(messageStr, "Unable to open output file %s",
-	    INPUT_DOT_OUT);
+    sprintf(messageStr, "Unable to open output file %s", INPUT_DOT_OUT);
     Error(ERROR_LEVEL_1, routineName, messageStr);
     return;
   }
   xdrstdio_create(&xdrs, fp_out, XDR_ENCODE);
 
-  PRD_angle_dep = (input.PRD_angle_dep != PRD_ANGLE_INDEP  &&  atmos.NPRDactive > 0);
-  XRD           = (input.XRD  &&  atmos.NPRDactive > 0);
+  PRD_angle_dep =
+      (input.PRD_angle_dep != PRD_ANGLE_INDEP && atmos.NPRDactive > 0);
+  XRD = (input.XRD && atmos.NPRDactive > 0);
 
-  /* --- Write various input parameters to file --     -------------- */      
+  /* --- Write various input parameters to file --     -------------- */
 
   result &= xdr_bool(&xdrs, &input.magneto_optical);
   result &= xdr_bool(&xdrs, &PRD_angle_dep);
   result &= xdr_bool(&xdrs, &XRD);
 
-  result &= xdr_enum(&xdrs, (enum_t *) &input.startJ);
-  result &= xdr_enum(&xdrs, (enum_t *) &input.StokesMode);
+  result &= xdr_enum(&xdrs, (enum_t *)&input.startJ);
+  result &= xdr_enum(&xdrs, (enum_t *)&input.StokesMode);
 
   result &= xdr_double(&xdrs, &input.metallicity);
 
@@ -77,10 +73,9 @@ void writeInput(void)
   big_endian = is_big_endian();
   result &= xdr_bool(&xdrs, &big_endian);
 
-
   if (!result) {
     sprintf(messageStr, "Unable to write proper amount to output file %s",
-	    INPUT_DOT_OUT);
+            INPUT_DOT_OUT);
     Error(ERROR_LEVEL_1, routineName, messageStr);
   }
   xdr_destroy(&xdrs);
@@ -90,14 +85,13 @@ void writeInput(void)
 
 /* ------- begin -------------------------- is_big_endian.c --------- */
 
-int is_big_endian(void)
-{
+int is_big_endian(void) {
   unsigned char *b;
   short i[1] = {1};
 
   /* --- Returns 1 if host machine is big endian, 0 otherwise -- ---- */
 
-  b = (unsigned char *) i;
+  b = (unsigned char *)i;
   return (b[0]) ? 0 : 1;
 }
 /* ------- end ---------------------------- is_big_endian.c --------- */

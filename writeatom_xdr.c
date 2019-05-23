@@ -9,7 +9,6 @@
 /* --- Writes atomic data to output file.
        XDR (external data representation) version. --  -------------- */
 
- 
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,11 +21,9 @@
 #include "error.h"
 #include "xdr.h"
 
-
 /* --- Function prototypes --                          -------------- */
 
 bool_t xdr_adamp(XDR *xdrs, struct Atom *atom);
-
 
 /* --- Global variables --                             -------------- */
 
@@ -35,31 +32,27 @@ extern Spectrum spectrum;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- writeAtom.c ------------- */
 
-void writeAtom(struct Atom *atom)
-{
-  const  char routineName[] = "writeAtom";
+void writeAtom(struct Atom *atom) {
+  const char routineName[] = "writeAtom";
 
-  char  atomoutfile[12];
-  FILE  *fp_out, *fp_adamp;
-  XDR    xdrs;
+  char atomoutfile[12];
+  FILE *fp_out, *fp_adamp;
+  XDR xdrs;
 
-  sprintf(atomoutfile, (atom->ID[1] == ' ') ?
-	  "atom.%.1s.out" : "atom.%.2s.out", atom->ID);
+  sprintf(atomoutfile, (atom->ID[1] == ' ') ? "atom.%.1s.out" : "atom.%.2s.out",
+          atom->ID);
 
   if ((fp_out = fopen(atomoutfile, "w")) == NULL) {
-    sprintf(messageStr, "Unable to open output file %s",
-	    atomoutfile);
+    sprintf(messageStr, "Unable to open output file %s", atomoutfile);
     Error(ERROR_LEVEL_1, routineName, messageStr);
     return;
   }
   xdrstdio_create(&xdrs, fp_out, XDR_ENCODE);
 
   if (!xdr_atom(&xdrs, atom)) {
-    sprintf(messageStr, "Unable to write to output file %s",
-	    atomoutfile);
+    sprintf(messageStr, "Unable to write to output file %s", atomoutfile);
     Error(ERROR_LEVEL_1, routineName, messageStr);
   }
   xdr_destroy(&xdrs);
@@ -69,8 +62,7 @@ void writeAtom(struct Atom *atom)
 
 /* ------- begin -------------------------- xdr_atom.c -------------- */
 
-bool_t xdr_atom(XDR *xdrs, struct Atom *atom)
-{
+bool_t xdr_atom(XDR *xdrs, struct Atom *atom) {
   register int i, kr, kf;
 
   bool_t result = TRUE, shape;
@@ -88,27 +80,27 @@ bool_t xdr_atom(XDR *xdrs, struct Atom *atom)
   result &= xdr_int(xdrs, &atom->Nline);
   result &= xdr_int(xdrs, &atom->Ncont);
   result &= xdr_int(xdrs, &atom->Nfixed);
-  
+
   result &= xdr_double(xdrs, &atom->abundance);
   result &= xdr_double(xdrs, &atom->weight);
-  
-  for (i = 0;  i < atom->Nlevel;  i++)
+
+  for (i = 0; i < atom->Nlevel; i++)
     result &= xdr_counted_string(xdrs, &atom->label[i]);
 
-  result &= xdr_vector(xdrs, (char *) atom->g, atom->Nlevel,
-		      sizeof(double), (xdrproc_t) xdr_double);
-  result &= xdr_vector(xdrs, (char *) atom->E, atom->Nlevel,
-		      sizeof(double), (xdrproc_t) xdr_double);
-  result &= xdr_vector(xdrs, (char *) atom->stage, atom->Nlevel,
-		      sizeof(int), (xdrproc_t) xdr_int);
+  result &= xdr_vector(xdrs, (char *)atom->g, atom->Nlevel, sizeof(double),
+                       (xdrproc_t)xdr_double);
+  result &= xdr_vector(xdrs, (char *)atom->E, atom->Nlevel, sizeof(double),
+                       (xdrproc_t)xdr_double);
+  result &= xdr_vector(xdrs, (char *)atom->stage, atom->Nlevel, sizeof(int),
+                       (xdrproc_t)xdr_int);
 
   /* --- Write the bound-bound and bound-free transitions -- -------- */
 
   rt_type = ATOMIC_LINE;
-  for (kr = 0;  kr < atom->Nline;  kr++) {
+  for (kr = 0; kr < atom->Nline; kr++) {
     line = atom->line + kr;
 
-    result &= xdr_enum(xdrs, (enum_t *) &rt_type);
+    result &= xdr_enum(xdrs, (enum_t *)&rt_type);
     result &= xdr_int(xdrs, &line->i);
     result &= xdr_int(xdrs, &line->j);
     result &= xdr_int(xdrs, &line->Nlambda);
@@ -121,17 +113,20 @@ bool_t xdr_atom(XDR *xdrs, struct Atom *atom)
       result &= xdr_double(xdrs, &line->lambda0);
 
     if (line->Voigt) {
-      if (line->PRD) shape = 2;  else  shape = 1;
+      if (line->PRD)
+        shape = 2;
+      else
+        shape = 1;
     } else
       shape = 0;
     result &= xdr_int(xdrs, &shape);
     result &= xdr_double(xdrs, &line->Aji);
   }
   rt_type = ATOMIC_CONTINUUM;
-  for (kr = 0;  kr < atom->Ncont;  kr++) {
+  for (kr = 0; kr < atom->Ncont; kr++) {
     continuum = atom->continuum + kr;
 
-    result &= xdr_enum(xdrs, (enum_t *) &rt_type);
+    result &= xdr_enum(xdrs, (enum_t *)&rt_type);
     result &= xdr_int(xdrs, &continuum->i);
     result &= xdr_int(xdrs, &continuum->j);
     result &= xdr_int(xdrs, &continuum->Nlambda);
@@ -152,27 +147,25 @@ bool_t xdr_atom(XDR *xdrs, struct Atom *atom)
   }
   /* --- Write wavelength dependent cross section for bound-free -- - */
 
-  for (kr = 0;  kr < atom->Ncont;  kr++) {
+  for (kr = 0; kr < atom->Ncont; kr++) {
     continuum = atom->continuum + kr;
 
     if (continuum->hydrogenic) {
       result &= xdr_double(xdrs, continuum->lambda);
     } else {
-      result &= xdr_vector(xdrs, (char *) continuum->lambda,
-			   continuum->Nlambda,
-			   sizeof(double), (xdrproc_t) xdr_double);
-      result &= xdr_vector(xdrs, (char *) continuum->alpha,
-			   continuum->Nlambda,
-			   sizeof(double), (xdrproc_t) xdr_double);
+      result &= xdr_vector(xdrs, (char *)continuum->lambda, continuum->Nlambda,
+                           sizeof(double), (xdrproc_t)xdr_double);
+      result &= xdr_vector(xdrs, (char *)continuum->alpha, continuum->Nlambda,
+                           sizeof(double), (xdrproc_t)xdr_double);
     }
   }
   /* --- Write the fixed transtitions --               -------------- */
 
-  for (kf = 0;  kf < atom->Nfixed;  kf++) {
+  for (kf = 0; kf < atom->Nfixed; kf++) {
     ft = atom->ft + kf;
 
-    result &= xdr_enum(xdrs, (enum_t *) &ft->type);
-    result &= xdr_enum(xdrs, (enum_t *) &ft->option);
+    result &= xdr_enum(xdrs, (enum_t *)&ft->type);
+    result &= xdr_enum(xdrs, (enum_t *)&ft->option);
     result &= xdr_int(xdrs, &ft->i);
     result &= xdr_int(xdrs, &ft->j);
 
@@ -192,25 +185,25 @@ bool_t xdr_atom(XDR *xdrs, struct Atom *atom)
 
 /* ------- begin -------------------------- xdr_adamp.c ------------- */
 
-bool_t xdr_adamp(XDR *xdrs, Atom *atom)
-{
+bool_t xdr_adamp(XDR *xdrs, Atom *atom) {
   register int kr, k;
 
-  int     result = TRUE;
+  int result = TRUE;
   double *adamp;
   AtomicLine *line;
 
-  adamp = (double *) malloc(atmos.Nspace * sizeof(double));
+  adamp = (double *)malloc(atmos.Nspace * sizeof(double));
 
-  for (kr = 0;  kr < atom->Nline;  kr++) {
+  for (kr = 0; kr < atom->Nline; kr++) {
     line = atom->line + kr;
     if (line->Voigt)
       Damping(line, adamp);
     else
-      for (k = 0;  k < atmos.Nspace;  k++) adamp[k] = 0.0;
+      for (k = 0; k < atmos.Nspace; k++)
+        adamp[k] = 0.0;
 
-    result &= xdr_vector(xdrs, (char *) adamp, atmos.Nspace,
-			 sizeof(double), (xdrproc_t) xdr_double);
+    result &= xdr_vector(xdrs, (char *)adamp, atmos.Nspace, sizeof(double),
+                         (xdrproc_t)xdr_double);
   }
   free(adamp);
   return result;

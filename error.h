@@ -11,16 +11,14 @@
 
 /* --- Defines error numbers, messages and associated actions -- ---- */
 
-
 /* ------- begin -------------------------- error.h ----------------- */
 
-enum errorlevel {MESSAGE, WARNING, ERROR_LEVEL_1, ERROR_LEVEL_2};
-
+enum errorlevel { MESSAGE, WARNING, ERROR_LEVEL_1, ERROR_LEVEL_2 };
 
 /* --- Associated function prototypes --               -------------- */
 
 void Error(enum errorlevel level, const char *routineName,
-	   const char *messageStr);
+           const char *messageStr);
 
 #endif /* !__ERROR_H__ */
 

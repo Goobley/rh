@@ -9,22 +9,19 @@
 /* --- Functions for ordering arrays of values. See ``man qsort''
        for examples. --                                -------------- */
 
- 
 #include "rh.h"
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
-
 
 /* ------- begin -------------------------- qsascend.c -------------- */
 
-int qsascend(const void *v1, const void *v2 )
-{
+int qsascend(const void *v1, const void *v2) {
   double f1, f2;
 
-  f1 = *(double*) v1;  f2 = *(double *) v2;
+  f1 = *(double *)v1;
+  f2 = *(double *)v2;
   if (f1 < f2)
     return -1;
   else if (f1 > f2)
@@ -36,11 +33,11 @@ int qsascend(const void *v1, const void *v2 )
 
 /* ------- begin -------------------------- qsdescend.c ------------- */
 
-int qsdescend(const void *v1, const void *v2 )
-{
+int qsdescend(const void *v1, const void *v2) {
   double f1, f2;
 
-  f1 = *(double*) v1;  f2 = *(double *) v2;
+  f1 = *(double *)v1;
+  f2 = *(double *)v2;
   if (f1 > f2)
     return -1;
   else if (f1 < f2)

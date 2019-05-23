@@ -15,9 +15,7 @@
 #include "statistics.h"
 #include "inputs.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
@@ -26,11 +24,9 @@ extern Spectrum spectrum;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- initScatter.c ----------- */
 
-void initScatter()
-{
+void initScatter() {
   const char routineName[] = "initScatter";
   register int n, kr, niter;
 
@@ -38,30 +34,30 @@ void initScatter()
   Atom *atom;
   AtomicLine *line;
 
-  /* --- Fill the radiative rates from previous solution if 
+  /* --- Fill the radiative rates from previous solution if
          PRD lines are present --                      -------------- */
 
-  if (atmos.NPRDactive > 0  && input.startJ == OLD_J) {
-    for (n = 0;  n < atmos.Natom;  n++) {
+  if (atmos.NPRDactive > 0 && input.startJ == OLD_J) {
+    for (n = 0; n < atmos.Natom; n++) {
       atom = &atmos.atoms[n];
       if (atom->active) {
-	readRadRate(atom);
-	for (kr = 0;  kr < atom->Nline;  kr++) {
-	  line = atom->line + kr;
-	  if (line->PRD) {
-	    switch (input.PRD_angle_dep) {
-	    case PRD_ANGLE_INDEP:
-	      PRDScatter(line, LINEAR);
-	      break;
-	    case PRD_ANGLE_APPROX:
-	      PRDAngleApproxScatter(line, LINEAR);
-	      break;
-	    case PRD_ANGLE_DEP:
-	      PRDAngleScatter(line, LINEAR);
-	      break;
-	    }
-	  }
-	}
+        readRadRate(atom);
+        for (kr = 0; kr < atom->Nline; kr++) {
+          line = atom->line + kr;
+          if (line->PRD) {
+            switch (input.PRD_angle_dep) {
+            case PRD_ANGLE_INDEP:
+              PRDScatter(line, LINEAR);
+              break;
+            case PRD_ANGLE_APPROX:
+              PRDAngleApproxScatter(line, LINEAR);
+              break;
+            case PRD_ANGLE_DEP:
+              PRDAngleScatter(line, LINEAR);
+              break;
+            }
+          }
+        }
       }
     }
   }
@@ -69,15 +65,15 @@ void initScatter()
          when we are also planning to do main iterations -- --------- */
 
   if (spectrum.updateJ) {
-    sprintf(messageStr,
-	    " %s: Lambda iterating background scattering...\n\n",
-	    routineName);
+    sprintf(messageStr, " %s: Lambda iterating background scattering...\n\n",
+            routineName);
     Error(MESSAGE, routineName, messageStr);
 
     niter = 0;
-    while (input.NmaxIter  &&  niter < input.NmaxScatter) {
+    while (input.NmaxIter && niter < input.NmaxScatter) {
       dJmax = solveSpectrum(FALSE, FALSE);
-      if (dJmax < input.iterLimit) break;
+      if (dJmax < input.iterLimit)
+        break;
       niter++;
     }
   }

@@ -8,11 +8,11 @@
 # (both KEYWORD_REQUIRED).
 
   ATMOS_FILE = ../../Atmos/FALC_82.atmos
-  ABUND_FILE = ../../Atoms_example/abundance.input
+  ABUND_FILE = ../../Atoms/abundance.input
 
 # Set choice of number of rays (KEYWORD_OPTIONAL).
 
-  NRAYS = 3
+  NRAYS = 5
 
 # Set choice of angular grid (KEYWORD_OPTIONAL).
 # Options: SET_VERTICAL, SET_A2, SET_A4, SET_A6, SET_A8, SET_B4, SET_B6,
@@ -105,7 +105,7 @@
 # - PRD_ANGLE_INDEP (angle-independent PRD, default)
 # - PRD_ANGLE_APPROX (Jorrit's hybrid scheme)
 # - PRD_ANGLE_DEP (full angle-dependent PRD)
-  PRD_ANGLE_DEP = PRD_ANGLE_APPROX
+  PRD_ANGLE_DEP = PRD_ANGLE_INDEP
 
   XRD = FALSE
 

@@ -20,18 +20,15 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 CommandLine commandline;
 InputData input;
 char messageStr[MAX_LINE_SIZE];
 
-
 /* ------- begin -------------------------- avgmolweight.c ---------- */
 
-void main(int argc, char *argv[])
-{
+void main(int argc, char *argv[]) {
   Atmosphere atmos;
 
   commandline.quiet = FALSE;
@@ -45,9 +42,13 @@ void main(int argc, char *argv[])
   strcpy(input.KuruczData, "none");
   strcpy(input.pfData, argv[2]);
   readAbundance(&atmos);
-  fprintf(stderr, "\n  The average weight per Hydrogen atom for \n"
-	  "  abundance file %s is %6.4f", argv[1], atmos.wght_per_H);
-  fprintf(stderr, "\n  The average molecular weight for \n"
-	  "  abundance file %s is %6.4f\n\n", argv[1], atmos.avgMolWght);
+  fprintf(stderr,
+          "\n  The average weight per Hydrogen atom for \n"
+          "  abundance file %s is %6.4f",
+          argv[1], atmos.wght_per_H);
+  fprintf(stderr,
+          "\n  The average molecular weight for \n"
+          "  abundance file %s is %6.4f\n\n",
+          argv[1], atmos.avgMolWght);
 }
 /* ------- end ---------------------------- avgmolweight.c ---------- */

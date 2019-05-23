@@ -14,33 +14,29 @@
  Note: space is initialized to zeros by using calloc rather than malloc.
 
        --                                              -------------- */
- 
+
 #include <stdlib.h>
 
 #include "rh.h"
 #include "error.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
-extern char   messageStr[];
-
+extern char messageStr[];
 
 /* ------- begin -------------------------- matrix_char.c ----------- */
 
-char **matrix_char(int Nrow, int Ncol)
-{
+char **matrix_char(int Nrow, int Ncol) {
   register int i;
 
   char *theMatrix, **Matrix;
-  int   typeSize = sizeof(char), pointerSize = sizeof(char *);
+  int typeSize = sizeof(char), pointerSize = sizeof(char *);
 
-  theMatrix = (char *)  calloc(Nrow * Ncol, typeSize);
-  Matrix    = (char **) malloc(Nrow * pointerSize);
-  for (i = 0;  i < Nrow;  i++, theMatrix += Ncol)
+  theMatrix = (char *)calloc(Nrow * Ncol, typeSize);
+  Matrix = (char **)malloc(Nrow * pointerSize);
+  for (i = 0; i < Nrow; i++, theMatrix += Ncol)
     Matrix[i] = theMatrix;
 
   return Matrix;
@@ -49,16 +45,14 @@ char **matrix_char(int Nrow, int Ncol)
 
 /* ------- begin -------------------------- matrix_int.c ------------ */
 
-int **matrix_int(int Nrow, int Ncol)
-{
+int **matrix_int(int Nrow, int Ncol) {
   register int i;
 
-  int *theMatrix, **Matrix, typeSize = sizeof(int),
-       pointerSize = sizeof(int *);
+  int *theMatrix, **Matrix, typeSize = sizeof(int), pointerSize = sizeof(int *);
 
-  theMatrix = (int *)  calloc(Nrow * Ncol, typeSize);
-  Matrix    = (int **) malloc(Nrow * pointerSize);
-  for (i = 0;  i < Nrow;  i++, theMatrix += Ncol)
+  theMatrix = (int *)calloc(Nrow * Ncol, typeSize);
+  Matrix = (int **)malloc(Nrow * pointerSize);
+  for (i = 0; i < Nrow; i++, theMatrix += Ncol)
     Matrix[i] = theMatrix;
 
   return Matrix;
@@ -67,16 +61,15 @@ int **matrix_int(int Nrow, int Ncol)
 
 /* ------- begin -------------------------- matrix_double.c --------- */
 
-double **matrix_double(int Nrow, int Ncol)
-{
+double **matrix_double(int Nrow, int Ncol) {
   register int i;
 
-  int     typeSize = sizeof(double), pointerSize = sizeof(double *);
+  int typeSize = sizeof(double), pointerSize = sizeof(double *);
   double *theMatrix, **Matrix;
 
-  theMatrix = (double *)  calloc(Nrow * Ncol, typeSize);
-  Matrix    = (double **) malloc(Nrow * pointerSize);
-  for (i = 0;  i < Nrow;  i++, theMatrix += Ncol)
+  theMatrix = (double *)calloc(Nrow * Ncol, typeSize);
+  Matrix = (double **)malloc(Nrow * pointerSize);
+  for (i = 0; i < Nrow; i++, theMatrix += Ncol)
     Matrix[i] = theMatrix;
 
   return Matrix;
@@ -85,16 +78,15 @@ double **matrix_double(int Nrow, int Ncol)
 
 /* ------- begin -------------------------- matrix_float.c --------- */
 
-float **matrix_float(int Nrow, int Ncol)
-{
+float **matrix_float(int Nrow, int Ncol) {
   register int i;
 
-  int     typeSize = sizeof(float), pointerSize = sizeof(float *);
+  int typeSize = sizeof(float), pointerSize = sizeof(float *);
   float *theMatrix, **Matrix;
 
-  theMatrix = (float *)  calloc(Nrow * Ncol, typeSize);
-  Matrix    = (float **) malloc(Nrow * pointerSize);
-  for (i = 0;  i < Nrow;  i++, theMatrix += Ncol)
+  theMatrix = (float *)calloc(Nrow * Ncol, typeSize);
+  Matrix = (float **)malloc(Nrow * pointerSize);
+  for (i = 0; i < Nrow; i++, theMatrix += Ncol)
     Matrix[i] = theMatrix;
 
   return Matrix;
@@ -103,11 +95,10 @@ float **matrix_float(int Nrow, int Ncol)
 
 /* ------- begin -------------------------- freeMatrix.c ------------ */
 
-void freeMatrix(void **matrix)
-{
+void freeMatrix(void **matrix) {
   const char routineName[] = "freeMatrix";
 
-  if (matrix == NULL  ||  matrix[0] == NULL) {
+  if (matrix == NULL || matrix[0] == NULL) {
     sprintf(messageStr, "Trying to free NULL pointer");
     Error(ERROR_LEVEL_2, routineName, messageStr);
   } else {

@@ -12,15 +12,15 @@
 #include <mpi.h>
 
 typedef struct {
-  char     name[MPI_MAX_PROCESSOR_NAME], rev_id[MAX_LINE_SIZE];
-  bool_t   single_log, stop, isfirst;
-  int      nx, ny;
-  int      size, rank, namelen, ix, iy, *xnum, *ynum, *niter, zcut, ndims_z;
-  int     *zcut_hist, **rh_converged, StokesMode_save, *convergence, snap_number;
-  long     nconv, nnoconv, ncrash, my_start, backgrrecno;
-  long   **taskmap, task, Ntasks, total_tasks;
-  double  *dpopsmax, **dpopsmax_hist;
-  FILE    *logfile, *main_logfile;
+  char name[MPI_MAX_PROCESSOR_NAME], rev_id[MAX_LINE_SIZE];
+  bool_t single_log, stop, isfirst;
+  int nx, ny;
+  int size, rank, namelen, ix, iy, *xnum, *ynum, *niter, zcut, ndims_z;
+  int *zcut_hist, **rh_converged, StokesMode_save, *convergence, snap_number;
+  long nconv, nnoconv, ncrash, my_start, backgrrecno;
+  long **taskmap, task, Ntasks, total_tasks;
+  double *dpopsmax, **dpopsmax_hist;
+  FILE *logfile, *main_logfile;
   MPI_Comm comm;
   MPI_Info info;
 } MPI_data;
@@ -73,11 +73,10 @@ double solveSpectrum_p(bool_t eval_operator, bool_t redistribute);
 
 void SolveLinearEq_p(int N, double **A, double *b, bool_t improve);
 
-
-#define MPILOG_TEMPLATE     "scratch/rh_p%d.log"
+#define MPILOG_TEMPLATE "scratch/rh_p%d.log"
 #define RAY_MPILOG_TEMPLATE "scratch/solveray_p%d.log"
-#define PRD_FILE_TEMPLATE   "scratch/PRD_%s_%d-%d_p%d.dat"
-#define PRD_FILE_TEMPLATE1  "scratch/PRD_%.1s_%d-%d_p%d.dat"
+#define PRD_FILE_TEMPLATE "scratch/PRD_%s_%d-%d_p%d.dat"
+#define PRD_FILE_TEMPLATE1 "scratch/PRD_%.1s_%d-%d_p%d.dat"
 
 #endif /* !__PARALLEL_H__ */
 

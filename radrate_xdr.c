@@ -9,7 +9,6 @@
 /* --- Routines for writing radiative rates to file.
        XDR (external data representation) version. --  -------------- */
 
- 
 #include <string.h>
 
 #include "rh.h"
@@ -23,32 +22,31 @@
 
 bool_t xdr_radrate(XDR *xdrs, Atom *atom);
 
-
 /* --- Global variables --                             -------------- */
 
 extern Atmosphere atmos;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- writeRadRate.c - -------- */
 
-bool_t writeRadRate(Atom *atom)
-{
+bool_t writeRadRate(Atom *atom) {
   const char routineName[] = "writeRadRate";
 
-  char  ratesfile[15];
+  char ratesfile[15];
   FILE *fp;
-  XDR   xdrs;
+  XDR xdrs;
 
   /* --- Write radiatve rates for transitions treated in detail.-- -- */
 
-  if (!strcmp(input.radrateFile, "none")) return FALSE;
+  if (!strcmp(input.radrateFile, "none"))
+    return FALSE;
 
-  sprintf(ratesfile, (atom->ID[1] == ' ') ?
-	  "radrate.%.1s.out" : "radrate.%.2s.out", atom->ID);
+  sprintf(ratesfile,
+          (atom->ID[1] == ' ') ? "radrate.%.1s.out" : "radrate.%.2s.out",
+          atom->ID);
 
-  if ((fp = fopen(ratesfile, "w" )) == NULL) {
+  if ((fp = fopen(ratesfile, "w")) == NULL) {
     sprintf(messageStr, "Unable to open output file %s", ratesfile);
     Error(ERROR_LEVEL_1, routineName, messageStr);
     return FALSE;
@@ -68,22 +66,23 @@ bool_t writeRadRate(Atom *atom)
 
 /* ------- begin -------------------------- readRadRate.c ----------- */
 
-bool_t readRadRate(Atom *atom)
-{
+bool_t readRadRate(Atom *atom) {
   const char routineName[] = "readRadRate";
 
-  char  ratesfile[15];
+  char ratesfile[15];
   FILE *fp;
-  XDR   xdrs;
+  XDR xdrs;
 
-  if (!strcmp(input.radrateFile, "none")) return FALSE;
+  if (!strcmp(input.radrateFile, "none"))
+    return FALSE;
 
-  sprintf(ratesfile, (atom->ID[1] == ' ') ?
-	  "radrate.%.1s.out" : "radrate.%.2s.out", atom->ID);
+  sprintf(ratesfile,
+          (atom->ID[1] == ' ') ? "radrate.%.1s.out" : "radrate.%.2s.out",
+          atom->ID);
 
   /* --- Read radiative rates for transitions treated in detail. -- - */
 
-  if ((fp = fopen(ratesfile, "r" )) == NULL) {
+  if ((fp = fopen(ratesfile, "r")) == NULL) {
     sprintf(messageStr, "Unable to open input file %s", ratesfile);
     Error(ERROR_LEVEL_2, routineName, messageStr);
     return FALSE;
@@ -102,27 +101,26 @@ bool_t readRadRate(Atom *atom)
 
 /* ------- begin -------------------------- xdr_radrate.c ----------- */
 
-bool_t xdr_radrate(XDR *xdrs, Atom *atom)
-{
+bool_t xdr_radrate(XDR *xdrs, Atom *atom) {
   register int kr;
 
   bool_t result = TRUE;
   AtomicLine *line;
   AtomicContinuum *continuum;
 
-  for (kr = 0;  kr < atom->Nline;  kr++) {
+  for (kr = 0; kr < atom->Nline; kr++) {
     line = &atom->line[kr];
-    result &= xdr_vector(xdrs, (char *) line->Rij, atmos.Nspace,
-			 sizeof(double), (xdrproc_t) xdr_double);
-    result &= xdr_vector(xdrs, (char *) line->Rji, atmos.Nspace,
-			 sizeof(double), (xdrproc_t) xdr_double);
+    result &= xdr_vector(xdrs, (char *)line->Rij, atmos.Nspace, sizeof(double),
+                         (xdrproc_t)xdr_double);
+    result &= xdr_vector(xdrs, (char *)line->Rji, atmos.Nspace, sizeof(double),
+                         (xdrproc_t)xdr_double);
   }
-  for (kr = 0;  kr < atom->Ncont;  kr++) {
+  for (kr = 0; kr < atom->Ncont; kr++) {
     continuum = &atom->continuum[kr];
-    result &= xdr_vector(xdrs, (char *) continuum->Rij, atmos.Nspace,
-			 sizeof(double), (xdrproc_t) xdr_double);
-    result &= xdr_vector(xdrs, (char *) continuum->Rji, atmos.Nspace,
-			 sizeof(double), (xdrproc_t) xdr_double);
+    result &= xdr_vector(xdrs, (char *)continuum->Rij, atmos.Nspace,
+                         sizeof(double), (xdrproc_t)xdr_double);
+    result &= xdr_vector(xdrs, (char *)continuum->Rji, atmos.Nspace,
+                         sizeof(double), (xdrproc_t)xdr_double);
   }
   return result;
 }

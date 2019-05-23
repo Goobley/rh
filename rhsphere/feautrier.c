@@ -19,7 +19,7 @@
        Boundary -- upper: Iminus = r0*Iplus  + h0
                    lower: Iplus  = rN*Iminus + hN
        --                                              -------------- */
- 
+
 #include <stdlib.h>
 #include <math.h>
 
@@ -30,11 +30,9 @@
 #include "spectrum.h"
 #include "error.h"
 
-#define  A_SIXTH  0.166666666667
-
+#define A_SIXTH 0.166666666667
 
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
@@ -43,35 +41,34 @@ extern Geometry geometry;
 extern Atmosphere atmos;
 extern Spectrum spectrum;
 
-
 /* ------- begin -------------------------- Feautrier.c ------------- */
 
 double Feautrier(int nspect, int mu, double *chi, double *S,
-		 enum FeautrierOrder F_order, double *P, double *Psi)
-{
+                 enum FeautrierOrder F_order, double *P, double *Psi) {
   const char routineName[] = "Feautrier";
   register int k;
 
-  int    Ns;
-  double r0, h0, rN, hN, f0, fN, Ak, Ck, tau0 = 0.0, Bnu[2], dtau_mid,
-         Iplus, *dtau, *abc, *A1, *C1, *F, *G, *Q, *Stmp, *ztmp;
-  Ray   *ray;
+  int Ns;
+  double r0, h0, rN, hN, f0, fN, Ak, Ck, tau0 = 0.0, Bnu[2], dtau_mid, Iplus,
+                                         *dtau, *abc, *A1, *C1, *F, *G, *Q,
+                                         *Stmp, *ztmp;
+  Ray *ray;
 
   ray = &geometry.rays[mu];
-  Ns  = ray->Ns;
+  Ns = ray->Ns;
 
-  dtau = (double *) malloc(Ns * sizeof(double));
-  abc  = (double *) malloc(Ns * sizeof(double));
-  Q    = (double *) malloc(Ns * sizeof(double));
-  A1   = (double *) malloc(Ns * sizeof(double));
-  C1   = (double *) malloc(Ns * sizeof(double));
-  F    = (double *) malloc(Ns * sizeof(double));
-  G    = (double *) malloc(Ns * sizeof(double));
-  ztmp = (double *) malloc(Ns * sizeof(double));
-  Stmp = (double *) malloc(Ns * sizeof(double));
+  dtau = (double *)malloc(Ns * sizeof(double));
+  abc = (double *)malloc(Ns * sizeof(double));
+  Q = (double *)malloc(Ns * sizeof(double));
+  A1 = (double *)malloc(Ns * sizeof(double));
+  C1 = (double *)malloc(Ns * sizeof(double));
+  F = (double *)malloc(Ns * sizeof(double));
+  G = (double *)malloc(Ns * sizeof(double));
+  ztmp = (double *)malloc(Ns * sizeof(double));
+  Stmp = (double *)malloc(Ns * sizeof(double));
 
-  for (k = 0;  k < Ns-1;  k++)
-    dtau[k] = 0.5 * (chi[k] + chi[k+1]) * (ray->s[k] - ray->s[k+1]);
+  for (k = 0; k < Ns - 1; k++)
+    dtau[k] = 0.5 * (chi[k] + chi[k + 1]) * (ray->s[k] - ray->s[k + 1]);
 
   /* --- Upper boundary condition:  I^- = r0*I^+ + h0 --   ---------- */
 
@@ -84,13 +81,13 @@ double Feautrier(int nspect, int mu, double *chi, double *S,
     h0 = geometry.Itop[nspect];
     break;
   }
-  f0      = (1.0 - r0) / (1.0 + r0);
-  abc[0]  = 1.0 + 2.0*f0 / dtau[0];
-  C1[0]   = 2.0 / SQ(dtau[0]);
-  Stmp[0] = S[0] + 2.0*h0 / ((1.0 + r0)*dtau[0]);
+  f0 = (1.0 - r0) / (1.0 + r0);
+  abc[0] = 1.0 + 2.0 * f0 / dtau[0];
+  C1[0] = 2.0 / SQ(dtau[0]);
+  Stmp[0] = S[0] + 2.0 * h0 / ((1.0 + r0) * dtau[0]);
   if (F_order == HERMITE) {
-    C1[0]   -= 2.0*A_SIXTH;
-    Stmp[0] += 2.0*A_SIXTH * (S[1] - S[0]);
+    C1[0] -= 2.0 * A_SIXTH;
+    Stmp[0] += 2.0 * A_SIXTH * (S[1] - S[0]);
   }
   /* --- Lower boundary condition:  I^+ = rN*I^- + hN.
          If ray is a SHELL_RAY use reflective boundary, otherwise use
@@ -101,80 +98,86 @@ double Feautrier(int nspect, int mu, double *chi, double *S,
     hN = 0.0;
   } else {
     rN = 0.0;
-    Planck(2, &atmos.T[geometry.Nradius-2], spectrum.lambda[nspect], Bnu);
-    hN = Bnu[1] - (Bnu[0] - Bnu[1]) / dtau[geometry.Nradius-2];
+    Planck(2, &atmos.T[geometry.Nradius - 2], spectrum.lambda[nspect], Bnu);
+    hN = Bnu[1] - (Bnu[0] - Bnu[1]) / dtau[geometry.Nradius - 2];
   }
   fN = (1.0 - rN) / (1.0 + rN);
-  abc[Ns-1]  = 1.0 + 2.0*fN / dtau[Ns-2];
-  A1[Ns-1]   = 2.0 / SQ(dtau[Ns-2]);
-  Stmp[Ns-1] = S[Ns-1] + 2.0*hN / ((1.0 + rN)*dtau[Ns-2]);
+  abc[Ns - 1] = 1.0 + 2.0 * fN / dtau[Ns - 2];
+  A1[Ns - 1] = 2.0 / SQ(dtau[Ns - 2]);
+  Stmp[Ns - 1] = S[Ns - 1] + 2.0 * hN / ((1.0 + rN) * dtau[Ns - 2]);
   if (F_order == HERMITE) {
-    A1[Ns-1]   -= 2.0*A_SIXTH;
-    Stmp[Ns-1] += 2.0*A_SIXTH * (S[Ns-2] - S[Ns-1]);
+    A1[Ns - 1] -= 2.0 * A_SIXTH;
+    Stmp[Ns - 1] += 2.0 * A_SIXTH * (S[Ns - 2] - S[Ns - 1]);
   }
 
-  for (k = 1;  k < Ns-1;  k++) {
-    dtau_mid = 0.5*(dtau[k] + dtau[k-1]);
-    A1[k]   = 1.0 / (dtau_mid * dtau[k-1]);
-    C1[k]   = 1.0 / (dtau_mid * dtau[k]);
-    abc[k]  = 1.0;
+  for (k = 1; k < Ns - 1; k++) {
+    dtau_mid = 0.5 * (dtau[k] + dtau[k - 1]);
+    A1[k] = 1.0 / (dtau_mid * dtau[k - 1]);
+    C1[k] = 1.0 / (dtau_mid * dtau[k]);
+    abc[k] = 1.0;
     Stmp[k] = S[k];
   }
   if (F_order == HERMITE) {
-    for (k = 1;  k < Ns-1;  k++) {
-      Ak     = A_SIXTH * (1.0 - 0.5*SQ(dtau[k])*A1[k]);
-      Ck     = A_SIXTH * (1.0 - 0.5*SQ(dtau[k-1])*C1[k]);
+    for (k = 1; k < Ns - 1; k++) {
+      Ak = A_SIXTH * (1.0 - 0.5 * SQ(dtau[k]) * A1[k]);
+      Ck = A_SIXTH * (1.0 - 0.5 * SQ(dtau[k - 1]) * C1[k]);
       A1[k] -= Ak;
       C1[k] -= Ck;
-      Stmp[k] += Ak*(S[k-1] - S[k]) + Ck*(S[k+1] - S[k]);
+      Stmp[k] += Ak * (S[k - 1] - S[k]) + Ck * (S[k + 1] - S[k]);
     }
   }
   /* --- Start the elimination --                          ---------- */
 
-  F[0]    = abc[0] / C1[0];
+  F[0] = abc[0] / C1[0];
   ztmp[0] = Stmp[0] / (abc[0] + C1[0]);
-  for (k = 1;  k < Ns-1;  k++) {
-    F[k]    = (abc[k] + A1[k]*F[k-1]/(1.0 + F[k-1])) / C1[k];
-    ztmp[k] = (Stmp[k] + A1[k]*ztmp[k-1]) / (C1[k] * (1.0 + F[k]));
+  for (k = 1; k < Ns - 1; k++) {
+    F[k] = (abc[k] + A1[k] * F[k - 1] / (1.0 + F[k - 1])) / C1[k];
+    ztmp[k] = (Stmp[k] + A1[k] * ztmp[k - 1]) / (C1[k] * (1.0 + F[k]));
   }
   /* --- Now backsubstitution --                          ----------- */
 
-  P[Ns-1] = (Stmp[Ns-1]+ A1[Ns-1]*ztmp[Ns-2]) /
-    (abc[Ns-1] + A1[Ns-1]*(F[Ns-2] / (1.0 + F[Ns-2])));
-  for (k = Ns-2;  k >= 0;  k--)
-    P[k] = P[k+1] / (1.0 + F[k]) + ztmp[k];
+  P[Ns - 1] = (Stmp[Ns - 1] + A1[Ns - 1] * ztmp[Ns - 2]) /
+              (abc[Ns - 1] + A1[Ns - 1] * (F[Ns - 2] / (1.0 + F[Ns - 2])));
+  for (k = Ns - 2; k >= 0; k--)
+    P[k] = P[k + 1] / (1.0 + F[k]) + ztmp[k];
 
   /* --- If necessary evaluate the diagonal operator -- ------------- */
 
   if (Psi) {
     if (F_order == HERMITE) {
       sprintf(messageStr,
-	      "Higher order for diagonal operator not yet implemented");
+              "Higher order for diagonal operator not yet implemented");
       Error(ERROR_LEVEL_1, routineName, messageStr);
     }
 
-    G[Ns-1] = abc[Ns-1] / A1[Ns-1];
-    for (k = Ns-2;  k >= 1;  k--)
-      G[k] = (abc[k] + C1[k]*G[k+1]/(1.0 + G[k+1])) / A1[k];
+    G[Ns - 1] = abc[Ns - 1] / A1[Ns - 1];
+    for (k = Ns - 2; k >= 1; k--)
+      G[k] = (abc[k] + C1[k] * G[k + 1] / (1.0 + G[k + 1])) / A1[k];
 
-    Psi[0] = 1.0 / (abc[0] + C1[0]*G[1]/(1.0 + G[1]));
-    for (k = 1;  k < Ns-1;  k++)
-      Psi[k] = 1.0 / (abc[k] + A1[k]*F[k-1]/(1.0 + F[k-1]) +
-		      C1[k]*G[k+1]/(1.0 + G[k+1]));
-    Psi[Ns-1] = 1.0 /
-      (abc[Ns-1] + A1[Ns-1]*F[Ns-2]/(1.0 + F[Ns-2]));
+    Psi[0] = 1.0 / (abc[0] + C1[0] * G[1] / (1.0 + G[1]));
+    for (k = 1; k < Ns - 1; k++)
+      Psi[k] = 1.0 / (abc[k] + A1[k] * F[k - 1] / (1.0 + F[k - 1]) +
+                      C1[k] * G[k + 1] / (1.0 + G[k + 1]));
+    Psi[Ns - 1] =
+        1.0 / (abc[Ns - 1] + A1[Ns - 1] * F[Ns - 2] / (1.0 + F[Ns - 2]));
   }
 
-  free(dtau);  free(abc);  free(Q);   free(A1);
-  free(C1);    free(F);    free(G);   free(ztmp);
+  free(dtau);
+  free(abc);
+  free(Q);
+  free(A1);
+  free(C1);
+  free(F);
+  free(G);
+  free(ztmp);
   free(Stmp);
 
   /* --- Return emergent intensity --                   ------------- */
 
-  Iplus = (1.0 + f0)*P[0] - h0/(1.0 + r0);
+  Iplus = (1.0 + f0) * P[0] - h0 / (1.0 + r0);
 
-  if (tau0) 
-    return (Iplus - S[0])*exp(-tau0) + S[0];
+  if (tau0)
+    return (Iplus - S[0]) * exp(-tau0) + S[0];
   else
     return Iplus;
 }

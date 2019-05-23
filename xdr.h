@@ -13,7 +13,6 @@
        (eXternal Data Representation) format to read/write data.
        --                                              -------------- */
 
-
 #include <rpc/xdr.h>
 
 #include "atom.h"
@@ -21,16 +20,15 @@
 
 /* --- Associated function prototypes --               -------------- */
 
-void   convertJ(FILE *fp_J, int Nspect, enum xdr_op xdrOperation);
+void convertJ(FILE *fp_J, int Nspect, enum xdr_op xdrOperation);
 bool_t readB(Atmosphere *atmos);
 bool_t writeFlux(char *fileName);
 bool_t writeMetals(char *fileName);
 bool_t xdr_atom(XDR *xdrs, Atom *atom);
 bool_t xdr_counted_string(XDR *xdrs, char **p);
 bool_t xdr_populations(XDR *xdrs, char *atmosID, int Nlevel, long Nspace,
-		       double *n, double *nstar);
+                       double *n, double *nstar);
 bool_t xdr_BRS(XDR *xdrs);
-
 
 #endif /* !__XDR_H__ */
 

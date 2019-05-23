@@ -31,9 +31,7 @@
 #include "inputs.h"
 #include "xdr.h"
 
-
 /* --- Function prototypes --                          -------------- */
-
 
 /* --- Global variables --                             -------------- */
 
@@ -47,13 +45,11 @@ InputData input;
 CommandLine commandline;
 char messageStr[MAX_MESSAGE_LENGTH];
 
-
 /* ------- begin -------------------------- rhf1d.c ----------------- */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   bool_t write_analyze_output, equilibria_only;
-  int    niter, nact;
+  int niter, nact;
 
   Atom *atom;
   Molecule *molecule;
@@ -69,15 +65,16 @@ int main(int argc, char *argv[])
 
   getCPU(1, TIME_START, NULL);
   MULTIatmos(&atmos, &geometry);
-  if (atmos.Stokes) Bproject();
+  if (atmos.Stokes)
+    Bproject();
 
   readAtomicModels();
   readMolecularModels();
   SortLambda();
-  
+
   getBoundary(&geometry);
-  
-  Background(write_analyze_output=TRUE, equilibria_only=FALSE);
+
+  Background(write_analyze_output = TRUE, equilibria_only = FALSE);
   convertScales(&atmos, &geometry);
 
   getProfiles();
@@ -93,7 +90,8 @@ int main(int argc, char *argv[])
   adjustStokesMode();
   niter = 0;
   while (niter < input.NmaxScatter) {
-    if (solveSpectrum(FALSE, FALSE) <= input.iterLimit) break;
+    if (solveSpectrum(FALSE, FALSE) <= input.iterLimit)
+      break;
     niter++;
   }
   /* --- Write output files --                         -------------- */
@@ -110,7 +108,7 @@ int main(int argc, char *argv[])
   writeSpectrum(&spectrum);
   writeFlux(FLUX_DOT_OUT);
 
-  for (nact = 0;  nact < atmos.Nactiveatom;  nact++) {
+  for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     atom = atmos.activeatoms[nact];
 
     writeAtom(atom);
@@ -118,8 +116,8 @@ int main(int argc, char *argv[])
     writeRadRate(atom);
     writeCollisionRate(atom);
     writeDamping(atom);
-  } 
-  for (nact = 0;  nact < atmos.Nactivemol;  nact++) {
+  }
+  for (nact = 0; nact < atmos.Nactivemol; nact++) {
     molecule = atmos.activemols[nact];
     writeMolPops(molecule);
   }

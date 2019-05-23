@@ -11,7 +11,6 @@
 
 /* --- Function prototypes --                          -------------- */
 
-
 /* --- Global variables --                             -------------- */
 
 /* -- Voigt function subroutines in different regions.
@@ -25,8 +24,7 @@
 
 /* ------- begin -------------------------- Humlicek1.c ------------- */
 
-complex Humlicek1(complex z)
-{
+complex Humlicek1(complex z) {
   /* --- Approximation in region I --                  -------------- */
 
   complex z1, z2;
@@ -40,8 +38,7 @@ complex Humlicek1(complex z)
 
 /* ------- begin -------------------------- Humlicek2.c ------------- */
 
-complex Humlicek2(complex z)
-{
+complex Humlicek2(complex z) {
   /* --- Approximation in region II --                 -------------- */
 
   complex z1, z2, u = cmplx_mult(z, z);
@@ -54,20 +51,19 @@ complex Humlicek2(complex z)
 
   return cmplx_div(z1, z2);
 }
-/* ------- end ---------------------------- Humlicek2.c ------------- */
+  /* ------- end ---------------------------- Humlicek2.c ------------- */
 
-#define N_HUMLICEK_3  5
+#define N_HUMLICEK_3 5
 
 /* ------- begin -------------------------- Humlicek3.c ------------- */
 
-complex Humlicek3(complex z)
-{
+complex Humlicek3(complex z) {
   register int n;
 
-  static double a[N_HUMLICEK_3] =
-                     {0.5642236, 3.778987, 11.96482, 20.20933, 16.4955};
-  static double b[N_HUMLICEK_3] =
-                     {6.699398, 21.69274,  39.27121, 38.82363, 16.4955};
+  static double a[N_HUMLICEK_3] = {0.5642236, 3.778987, 11.96482, 20.20933,
+                                   16.4955};
+  static double b[N_HUMLICEK_3] = {6.699398, 21.69274, 39.27121, 38.82363,
+                                   16.4955};
 
   complex z1, z2;
 
@@ -76,27 +72,26 @@ complex Humlicek3(complex z)
   z1 = cmplx(a[0], 0.0);
   z2 = cmplx_addr(z, b[0]);
 
-  for (n = 1;  n < N_HUMLICEK_3;  n++) {
+  for (n = 1; n < N_HUMLICEK_3; n++) {
     z1 = cmplx_addr(cmplx_mult(z1, z), a[n]);
     z2 = cmplx_addr(cmplx_mult(z2, z), b[n]);
   }
 
   return cmplx_div(z1, z2);
 }
-/* ------- end ---------------------------- Humlicek3.c ------------- */
+  /* ------- end ---------------------------- Humlicek3.c ------------- */
 
-#define N_HUMLICEK_4  7
+#define N_HUMLICEK_4 7
 
 /* ------- begin -------------------------- Humlicek4.c ------------- */
 
-complex Humlicek4(complex z)
-{
+complex Humlicek4(complex z) {
   register int n;
 
-  static double a[N_HUMLICEK_4] =
-     {0.56419, 1.320522, 35.7668, 219.031, 1540.787, 3321.99, 36183.31};
-  static double b[N_HUMLICEK_4] =
-     {1.841439, 61.57037, 364.2191, 2186.181, 9022.228, 24322.84, 32066.6};
+  static double a[N_HUMLICEK_4] = {0.56419,  1.320522, 35.7668, 219.031,
+                                   1540.787, 3321.99,  36183.31};
+  static double b[N_HUMLICEK_4] = {1.841439, 61.57037, 364.2191, 2186.181,
+                                   9022.228, 24322.84, 32066.6};
 
   complex z1, z2, u, expu;
 
@@ -107,12 +102,12 @@ complex Humlicek4(complex z)
   z1 = cmplx(a[0], 0.0);
   z2 = cmplx_addr(u, b[0]);
 
-  for (n = 1;  n < N_HUMLICEK_4;  n++) {
+  for (n = 1; n < N_HUMLICEK_4; n++) {
     z1 = cmplx_addr(cmplx_mult(u, z1), a[n]);
     z2 = cmplx_addr(cmplx_mult(u, z2), b[n]);
   }
   expu = cmplx_exp(cmplx_sclr(-1.0, u));
-  
+
   return cmplx_subt(expu, cmplx_div(cmplx_mult(z, z1), z2));
 }
 /* ------- end ---------------------------- Humlicek4.c ------------- */

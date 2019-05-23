@@ -23,7 +23,6 @@
 
    -------- */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,27 +35,25 @@
 #include "error.h"
 #include "inputs.h"
 
+#define BARKLEM_SP_DATA "Barklem_spdata.dat"
+#define BARKLEM_SP_NS 21
+#define BARKLEM_SP_NP 18
+#define BARKLEM_SP_NEFF1 1.0
+#define BARKLEM_SP_NEFF2 1.3
 
-#define BARKLEM_SP_DATA     "Barklem_spdata.dat"
-#define BARKLEM_SP_NS       21
-#define BARKLEM_SP_NP       18
-#define BARKLEM_SP_NEFF1    1.0
-#define BARKLEM_SP_NEFF2    1.3
+#define BARKLEM_PD_DATA "Barklem_pddata.dat"
+#define BARKLEM_PD_NP 18
+#define BARKLEM_PD_ND 18
+#define BARKLEM_PD_NEFF1 1.3
+#define BARKLEM_PD_NEFF2 2.3
 
-#define BARKLEM_PD_DATA     "Barklem_pddata.dat"
-#define BARKLEM_PD_NP       18
-#define BARKLEM_PD_ND       18
-#define BARKLEM_PD_NEFF1    1.3
-#define BARKLEM_PD_NEFF2    2.3
+#define BARKLEM_DF_DATA "Barklem_dfdata.dat"
+#define BARKLEM_DF_ND 18
+#define BARKLEM_DF_NF 18
+#define BARKLEM_DF_NEFF1 2.3
+#define BARKLEM_DF_NEFF2 3.3
 
-#define BARKLEM_DF_DATA     "Barklem_dfdata.dat"
-#define BARKLEM_DF_ND       18
-#define BARKLEM_DF_NF       18
-#define BARKLEM_DF_NEFF1    2.3
-#define BARKLEM_DF_NEFF2    3.3
-
-#define BARKLEM_DELTA_NEFF  0.1
-
+#define BARKLEM_DELTA_NEFF 0.1
 
 /* --- Global variables --                             -------------- */
 
@@ -64,25 +61,23 @@ extern Atmosphere atmos;
 extern InputData input;
 extern char messageStr[];
 
-
 /* ------- begin -------------------------- readBarklemTable.c ------ */
 
-bool_t readBarklemTable(enum Barklemtype type, Barklemstruct *bs)
-{
+bool_t readBarklemTable(enum Barklemtype type, Barklemstruct *bs) {
   register int n, i, j;
   const char routineName[] = "readBarklemTable";
 
-  char    filename[MAX_LINE_SIZE], inputLine[MAX_LINE_SIZE], *charptr;
-  int     nread;
-  double  neff1_0, neff2_0;
-  FILE   *fp_Barklem;
+  char filename[MAX_LINE_SIZE], inputLine[MAX_LINE_SIZE], *charptr;
+  int nread;
+  double neff1_0, neff2_0;
+  FILE *fp_Barklem;
 
   switch (type) {
   case SP:
-    if ( snprintf(filename, MAX_LINE_SIZE, "%s/%s", input.BarklemDir,
-                  BARKLEM_SP_DATA) >= MAX_LINE_SIZE ) {
-        sprintf(messageStr, "Barklem file path too large. Aborting.\n");
-        Error(ERROR_LEVEL_2, routineName, messageStr);
+    if (snprintf(filename, MAX_LINE_SIZE, "%s/%s", input.BarklemDir,
+                 BARKLEM_SP_DATA) >= MAX_LINE_SIZE) {
+      sprintf(messageStr, "Barklem file path too large. Aborting.\n");
+      Error(ERROR_LEVEL_2, routineName, messageStr);
     }
     bs->N1 = BARKLEM_SP_NS;
     bs->N2 = BARKLEM_SP_NP;
@@ -92,10 +87,10 @@ bool_t readBarklemTable(enum Barklemtype type, Barklemstruct *bs)
     break;
 
   case PD:
-    if ( snprintf(filename, MAX_LINE_SIZE, "%s/%s", input.BarklemDir,
-                  BARKLEM_PD_DATA) >= MAX_LINE_SIZE ) {
-        sprintf(messageStr, "Barklem file path too large. Aborting.\n");
-        Error(ERROR_LEVEL_2, routineName, messageStr);
+    if (snprintf(filename, MAX_LINE_SIZE, "%s/%s", input.BarklemDir,
+                 BARKLEM_PD_DATA) >= MAX_LINE_SIZE) {
+      sprintf(messageStr, "Barklem file path too large. Aborting.\n");
+      Error(ERROR_LEVEL_2, routineName, messageStr);
     }
     bs->N1 = BARKLEM_PD_NP;
     bs->N2 = BARKLEM_PD_ND;
@@ -105,10 +100,10 @@ bool_t readBarklemTable(enum Barklemtype type, Barklemstruct *bs)
     break;
 
   case DF:
-    if ( snprintf(filename, MAX_LINE_SIZE, "%s/%s", input.BarklemDir,
-                  BARKLEM_DF_DATA) >= MAX_LINE_SIZE ) {
-        sprintf(messageStr, "Barklem file path too large. Aborting.\n");
-        Error(ERROR_LEVEL_2, routineName, messageStr);
+    if (snprintf(filename, MAX_LINE_SIZE, "%s/%s", input.BarklemDir,
+                 BARKLEM_DF_DATA) >= MAX_LINE_SIZE) {
+      sprintf(messageStr, "Barklem file path too large. Aborting.\n");
+      Error(ERROR_LEVEL_2, routineName, messageStr);
     }
     bs->N1 = BARKLEM_DF_ND;
     bs->N2 = BARKLEM_DF_NF;
@@ -124,31 +119,31 @@ bool_t readBarklemTable(enum Barklemtype type, Barklemstruct *bs)
     return FALSE;
   }
 
-  bs->neff1 = (double *) malloc(bs->N1 * sizeof(double));
-  for (n = 0;  n < bs->N1;  n++)
+  bs->neff1 = (double *)malloc(bs->N1 * sizeof(double));
+  for (n = 0; n < bs->N1; n++)
     bs->neff1[n] = neff1_0 + n * BARKLEM_DELTA_NEFF;
 
-  bs->neff2 = (double *) malloc(bs->N2 * sizeof(double));
-  for (n = 0;  n < bs->N2;  n++)
+  bs->neff2 = (double *)malloc(bs->N2 * sizeof(double));
+  for (n = 0; n < bs->N2; n++)
     bs->neff2[n] = neff2_0 + n * BARKLEM_DELTA_NEFF;
 
   bs->cross = matrix_double(bs->N1, bs->N2);
   bs->alpha = matrix_double(bs->N1, bs->N2);
 
-  for (n = 0;  n < 3;  n++)
+  for (n = 0; n < 3; n++)
     charptr = fgets(inputLine, MAX_LINE_SIZE, fp_Barklem);
 
-  for (i = 0;  i < bs->N1;  i++)
-    for (j = 0;  j < bs->N2;  j++) {
+  for (i = 0; i < bs->N1; i++)
+    for (j = 0; j < bs->N2; j++) {
       nread = fscanf(fp_Barklem, "%lf", &bs->cross[i][j]);
-  }
-  for (n = 0;  n < 2;  n++)
+    }
+  for (n = 0; n < 2; n++)
     charptr = fgets(inputLine, MAX_LINE_SIZE, fp_Barklem);
 
-  for (i = 0;  i < bs->N1;  i++)
-    for (j = 0;  j < bs->N2;  j++) {
+  for (i = 0; i < bs->N1; i++)
+    for (j = 0; j < bs->N2; j++) {
       nread = fscanf(fp_Barklem, "%lf", &bs->alpha[i][j]);
-  }
+    }
 
   fclose(fp_Barklem);
   return TRUE;
@@ -157,13 +152,12 @@ bool_t readBarklemTable(enum Barklemtype type, Barklemstruct *bs)
 
 /* ------- begin -------------------------- getBarklemcross.c ------- */
 
-bool_t getBarklemcross(Barklemstruct *bs, RLK_Line *rlk)
-{
+bool_t getBarklemcross(Barklemstruct *bs, RLK_Line *rlk) {
   const char routineName[] = "getBarklemcross";
 
   int index;
   double Z, neff1, neff2, findex1, findex2, reducedmass, meanvelocity,
-         crossmean, E_Rydberg, deltaEi, deltaEj;
+      crossmean, E_Rydberg, deltaEi, deltaEj;
   Element *element;
 
   element = &atmos.elements[rlk->pt_index - 1];
@@ -178,39 +172,36 @@ bool_t getBarklemcross(Barklemstruct *bs, RLK_Line *rlk)
   if ((deltaEj = element->ionpot[rlk->stage] - rlk->Ej) <= 0.0)
     return FALSE;
 
-  Z = (double) (rlk->stage + 1);
+  Z = (double)(rlk->stage + 1);
   E_Rydberg = E_RYDBERG / (1.0 + M_ELECTRON / (element->weight * AMU));
   neff1 = Z * sqrt(E_Rydberg / deltaEi);
   neff2 = Z * sqrt(E_Rydberg / deltaEj);
 
-  if (rlk->Li > rlk->Lj) SWAPDOUBLE(neff1, neff2);
+  if (rlk->Li > rlk->Lj)
+    SWAPDOUBLE(neff1, neff2);
 
-  if (neff1 < bs->neff1[0] || neff1 > bs->neff1[bs->N1-1])
+  if (neff1 < bs->neff1[0] || neff1 > bs->neff1[bs->N1 - 1])
     return FALSE;
   Locate(bs->N1, bs->neff1, neff1, &index);
-  findex1 =
-    (double) index + (neff1 - bs->neff1[index]) / BARKLEM_DELTA_NEFF;
+  findex1 = (double)index + (neff1 - bs->neff1[index]) / BARKLEM_DELTA_NEFF;
 
-  if (neff2 < bs->neff2[0] || neff2 > bs->neff2[bs->N2-1])
+  if (neff2 < bs->neff2[0] || neff2 > bs->neff2[bs->N2 - 1])
     return FALSE;
   Locate(bs->N2, bs->neff2, neff2, &index);
-  findex2 =
-    (double) index + (neff2 - bs->neff2[index]) / BARKLEM_DELTA_NEFF;
+  findex2 = (double)index + (neff2 - bs->neff2[index]) / BARKLEM_DELTA_NEFF;
 
   /* --- Find interpolation in table --                -------------- */
 
-  rlk->cross = cubeconvol(bs->N2, bs->N1,
-			  bs->cross[0], findex2, findex1);
-  rlk->alpha = cubeconvol(bs->N2, bs->N1,
-			  bs->alpha[0], findex2, findex1);
+  rlk->cross = cubeconvol(bs->N2, bs->N1, bs->cross[0], findex2, findex1);
+  rlk->alpha = cubeconvol(bs->N2, bs->N1, bs->alpha[0], findex2, findex1);
 
-
-  reducedmass  = AMU / (1.0/atmos.H->weight + 1.0/element->weight);
+  reducedmass = AMU / (1.0 / atmos.H->weight + 1.0 / element->weight);
   meanvelocity = sqrt(8.0 * KBOLTZMANN / (PI * reducedmass));
-  crossmean    = SQ(RBOHR) * pow(meanvelocity / 1.0E4, -rlk->alpha);
+  crossmean = SQ(RBOHR) * pow(meanvelocity / 1.0E4, -rlk->alpha);
 
-  rlk->cross *= 2.0 * pow(4.0/PI, rlk->alpha/2.0) *
-    exp(gammln((4.0 - rlk->alpha)/2.0)) * meanvelocity * crossmean;
+  rlk->cross *= 2.0 * pow(4.0 / PI, rlk->alpha / 2.0) *
+                exp(gammln((4.0 - rlk->alpha) / 2.0)) * meanvelocity *
+                crossmean;
 
   rlk->vdwaals = BARKLEM;
   return TRUE;
@@ -219,13 +210,12 @@ bool_t getBarklemcross(Barklemstruct *bs, RLK_Line *rlk)
 
 /* ------- begin -------------------------- getBarklemactivecross.c - */
 
-bool_t getBarklemactivecross(AtomicLine *line)
-{
+bool_t getBarklemactivecross(AtomicLine *line) {
   bool_t determined = TRUE, useBarklem = FALSE;
   int index, Ll, Lu, nq, i, j, ic;
   double Sl, Su, Jl, Ju;
   double Z, neff1, neff2, findex1, findex2, reducedmass, meanvelocity,
-         crossmean, E_Rydberg, deltaEi, deltaEj;
+      crossmean, E_Rydberg, deltaEi, deltaEj;
   Atom *atom;
   Barklemstruct bs;
 
@@ -238,78 +228,76 @@ bool_t getBarklemactivecross(AtomicLine *line)
      otherwise assume that we are already giving Barklem cross-sections
      --- */
 
-  if(line->cvdWaals[0] < 20.0){
-
+  if (line->cvdWaals[0] < 20.0) {
 
     /* --- ABO tabulations are only valid for neutral atoms  -- -------- */
 
-    if (atom->stage[i] > 0) return FALSE;
+    if (atom->stage[i] > 0)
+      return FALSE;
 
     /* --- Get the quantum numbers for orbital angular momentum -- ---- */
 
-    determined &= determinate(atom->label[i], atom->g[i],
-			      &nq, &Sl, &Ll, &Jl);
-    determined &= determinate(atom->label[j], atom->g[j],
-			      &nq, &Su, &Lu, &Ju);
+    determined &= determinate(atom->label[i], atom->g[i], &nq, &Sl, &Ll, &Jl);
+    determined &= determinate(atom->label[j], atom->g[j], &nq, &Su, &Lu, &Ju);
 
     /* --- See if one of the Barklem cases applies --    -------------- */
 
     if (determined) {
       if ((Ll == S_ORBIT && Lu == P_ORBIT) ||
-	  (Ll == P_ORBIT && Lu == S_ORBIT)) {
-          useBarklem = readBarklemTable(SP, &bs);
+          (Ll == P_ORBIT && Lu == S_ORBIT)) {
+        useBarklem = readBarklemTable(SP, &bs);
       } else if ((Ll == P_ORBIT && Lu == D_ORBIT) ||
-		 (Ll == D_ORBIT && Lu == P_ORBIT)) {
-          useBarklem = readBarklemTable(PD, &bs);
+                 (Ll == D_ORBIT && Lu == P_ORBIT)) {
+        useBarklem = readBarklemTable(PD, &bs);
       } else if ((Ll == D_ORBIT && Lu == F_ORBIT) ||
-		 (Ll == F_ORBIT && Lu == D_ORBIT)) {
-	      useBarklem = readBarklemTable(DF, &bs);
+                 (Ll == F_ORBIT && Lu == D_ORBIT)) {
+        useBarklem = readBarklemTable(DF, &bs);
       }
     }
-    if (!determined || !useBarklem) return FALSE;
+    if (!determined || !useBarklem)
+      return FALSE;
 
     /* --- Determine the index of the appropriate continuum level -- -- */
 
     Z = atom->stage[j] + 1;
-    for (ic = j + 1;  atom->stage[ic] < atom->stage[j]+1;  ic++);
+    for (ic = j + 1; atom->stage[ic] < atom->stage[j] + 1; ic++)
+      ;
 
-    deltaEi   = atom->E[ic] - atom->E[i];
-    deltaEj   = atom->E[ic] - atom->E[j];
+    deltaEi = atom->E[ic] - atom->E[i];
+    deltaEj = atom->E[ic] - atom->E[j];
     E_Rydberg = E_RYDBERG / (1.0 + M_ELECTRON / (atom->weight * AMU));
 
     neff1 = Z * sqrt(E_Rydberg / deltaEi);
     neff2 = Z * sqrt(E_Rydberg / deltaEj);
 
-    if (Ll > Lu) SWAPDOUBLE(neff1, neff2);
+    if (Ll > Lu)
+      SWAPDOUBLE(neff1, neff2);
 
     /* --- Interpolate according to effective principal quantum number  */
 
-    if (neff1 < bs.neff1[0] || neff1 > bs.neff1[bs.N1-1])
+    if (neff1 < bs.neff1[0] || neff1 > bs.neff1[bs.N1 - 1])
       return FALSE;
     Locate(bs.N1, bs.neff1, neff1, &index);
-    findex1 =
-      (double) index + (neff1 - bs.neff1[index]) / BARKLEM_DELTA_NEFF;
+    findex1 = (double)index + (neff1 - bs.neff1[index]) / BARKLEM_DELTA_NEFF;
 
-    if (neff2 < bs.neff2[0] || neff2 > bs.neff2[bs.N2-1])
+    if (neff2 < bs.neff2[0] || neff2 > bs.neff2[bs.N2 - 1])
       return FALSE;
     Locate(bs.N2, bs.neff2, neff2, &index);
-    findex2 =
-      (double) index + (neff2 - bs.neff2[index]) / BARKLEM_DELTA_NEFF;
+    findex2 = (double)index + (neff2 - bs.neff2[index]) / BARKLEM_DELTA_NEFF;
 
     /* --- Find interpolation in table --                -------------- */
 
-    line->cvdWaals[0] = cubeconvol(bs.N2, bs.N1,
-				   bs.cross[0], findex2, findex1);
-    line->cvdWaals[1] = cubeconvol(bs.N2, bs.N1,
-				   bs.alpha[0], findex2, findex1);
+    line->cvdWaals[0] = cubeconvol(bs.N2, bs.N1, bs.cross[0], findex2, findex1);
+    line->cvdWaals[1] = cubeconvol(bs.N2, bs.N1, bs.alpha[0], findex2, findex1);
   }
 
-  reducedmass  = AMU / (1.0/atmos.atoms[0].weight + 1.0/atom->weight);
+  reducedmass = AMU / (1.0 / atmos.atoms[0].weight + 1.0 / atom->weight);
   meanvelocity = sqrt(8.0 * KBOLTZMANN / (PI * reducedmass));
-  crossmean    = SQ(RBOHR) * pow(meanvelocity / 1.0E4, -line->cvdWaals[1]);
+  crossmean = SQ(RBOHR) * pow(meanvelocity / 1.0E4, -line->cvdWaals[1]);
 
-  line->cvdWaals[0] *= 2.0 * pow(4.0/PI, line->cvdWaals[1]/2.0) *
-    exp(gammln((4.0 - line->cvdWaals[1])/2.0)) * meanvelocity * crossmean;
+  line->cvdWaals[0] *= 2.0 * pow(4.0 / PI, line->cvdWaals[1] / 2.0) *
+                       exp(gammln((4.0 - line->cvdWaals[1]) / 2.0)) *
+                       meanvelocity * crossmean;
 
   /* --- Use UNSOLD for the contribution of Helium atoms -- ---------- */
 
