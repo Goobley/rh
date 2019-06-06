@@ -197,8 +197,8 @@ int main(int argc, char *argv[]) {
     Error(MESSAGE, NULL, messageStr);
 
     as = &spectrum.as[wave_index[n]];
-    alloc_as(wave_index[n], crosscoupling = FALSE);
-    Opacity(wave_index[n], 0, to_obs = TRUE, initialize = TRUE);
+    alloc_as(wave_index[n], crosscoupling = FALSE, -1);
+    Opacity(wave_index[n], 0, to_obs = TRUE, initialize = TRUE, -1);
     readBackground(wave_index[n], 0, to_obs = TRUE);
 
     if (input.limit_memory) {
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
     result = xdr_vector(&xdrs, (char *)S, atmos.Nspace, sizeof(double),
                         (xdrproc_t)xdr_double);
 
-    free_as(wave_index[n], crosscoupling = FALSE);
+    free_as(wave_index[n], crosscoupling = FALSE, -1);
   }
 
   /* --- If magnetic fields are present --             -------------- */

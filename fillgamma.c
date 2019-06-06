@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <alloca.h>
 
 #include "rh.h"
 #include "error.h"
@@ -18,6 +19,8 @@
 #include "atom.h"
 #include "inputs.h"
 #include "constant.h"
+
+#include "CmoProfile.h"
 
 /* --- Routines for wavelength- and angle-integrated contributions to
        the crosscoupling, Gamma matrix, and radiative rates.
@@ -74,7 +77,8 @@ void initGammaMolecule(Molecule *molecule) {
 
 /* ------- begin -------------------------- addtoGamma.c ------------ */
 
-void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
+void addtoGamma(int nspect, double wmu, double *I, double *Psi, int threadId) {
+// void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
   const char routineName[] = "addtoGamma";
   register int nact, n, k, m;
 
@@ -89,10 +93,20 @@ void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
   MolecularLine *mrt;
   ActiveSet *as;
 
+  CMO_PROF_FUNC_START();
+
+  nt = threadId;
+
   twohc = 2.0 * HPLANCK * CLIGHT / CUBE(NM_TO_M);
 
   as = &spectrum.as[nspect];
-  nt = nspect % input.Nthreads;
+  // // nt = nspect % input.Nthreads;
+  // if (input.Nthreads > 1)
+  // {
+  //   nt = (nspect / input.workSize) % input.Nthreads;
+  // } else {
+  //   nt = nspect % input.Nthreads;
+  // }
 
   if (containsActive(as)) {
     Ieff = (double *)malloc(atmos.Nspace * sizeof(double));
@@ -108,6 +122,11 @@ void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
     }
   }
   /* --- Contributions from the active transitions in atoms -- ------ */
+
+  double scr_ji[atmos.Nspace];
+  double scr_ij[atmos.Nspace];
+  double scr_crossCouple[atmos.Nspace];
+  double scr_otherUpper[atmos.Nspace];
 
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     atom = atmos.activeatoms[nact];
@@ -153,29 +172,37 @@ void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
         twohnu3_c2 = 0.0;
       }
 
-      if (input.Nthreads > 1)
-        pthread_mutex_lock(&atom->Gamma_lock);
-
       ij = i * atom->Nlevel + j;
       ji = j * atom->Nlevel + i;
-
       for (k = 0; k < atmos.Nspace; k++) {
         wlamu = atom->rhth[nt].Vij[n][k] * atom->rhth[nt].wla[n][k] * wmu;
+        scr_ji[k] = Ieff[k] * wlamu;
+        scr_ij[k] = (twohnu3_c2 + Ieff[k]) * atom->rhth[nt].gij[n][k] * wlamu;
+        scr_crossCouple[k] = atom->rhth[nt].chi_up[i][k] * Psi[k] * 
+                             atom->rhth[nt].Uji_down[j][k]* wmu;
+      }
 
-        atom->Gamma[ji][k] += Ieff[k] * wlamu;
-        atom->Gamma[ij][k] +=
-            (twohnu3_c2 + Ieff[k]) * atom->rhth[nt].gij[n][k] * wlamu;
+
+      // if (input.Nthreads > 1)
+      //   pthread_mutex_lock(&atom->Gamma_lock);
+
+
+      for (k = 0; k < atmos.Nspace; k++) {
+        atom->rhacc[nt].Gamma[ji][k] += scr_ji[k];
+        atom->rhacc[nt].Gamma[ij][k] += scr_ij[k];
       }
       /* --- Cross-coupling terms, currently only for Stokes_I -- --- */
 
       for (k = 0; k < atmos.Nspace; k++) {
-        atom->Gamma[ij][k] -= atom->rhth[nt].chi_up[i][k] * Psi[k] *
-                              atom->rhth[nt].Uji_down[j][k] * wmu;
+        atom->rhacc[nt].Gamma[ij][k] -= scr_crossCouple[k];
       }
+      // if (input.Nthreads > 1)
+      //   pthread_mutex_unlock(&atom->Gamma_lock);
       /* --- If rt->i is also an upper level of another transition that
              is active at this wavelength then Gamma[ji] needs to be
              updated as well --                        -------------- */
 
+      // cmo: Look at optimising this inside the lock
       for (m = 0; m < as->Nactiveatomrt[nact]; m++) {
         switch (as->art[nact][m].type) {
         case ATOMIC_LINE:
@@ -188,13 +215,20 @@ void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
         }
         if (jp == i) {
           for (k = 0; k < atmos.Nspace; k++) {
-            atom->Gamma[ji][k] += atom->rhth[nt].chi_down[j][k] * Psi[k] *
-                                  atom->rhth[nt].Uji_down[i][k] * wmu;
+            scr_otherUpper[k] = atom->rhth[nt].chi_down[j][k] * Psi[k] *
+                                atom->rhth[nt].Uji_down[i][k] * wmu;
           }
+          // if (input.Nthreads > 1)
+          //   pthread_mutex_lock(&atom->Gamma_lock);
+          for (k = 0; k < atmos.Nspace; k++) {
+            atom->rhacc[nt].Gamma[ji][k] += scr_otherUpper[k];
+          }
+          // if (input.Nthreads > 1)
+          //   pthread_mutex_unlock(&atom->Gamma_lock);
         }
       }
-      if (input.Nthreads > 1)
-        pthread_mutex_unlock(&atom->Gamma_lock);
+      // if (input.Nthreads > 1)
+      //   pthread_mutex_unlock(&atom->Gamma_lock);
     }
   }
   /* --- Add the active molecular contributions --     -------------- */
@@ -242,12 +276,13 @@ void addtoGamma(int nspect, double wmu, double *I, double *Psi) {
 
   if (containsActive(as))
     free(Ieff);
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- addtoGamma.c ------------ */
 
 /* ------- begin -------------------------- addtoCoupling.c --------- */
 
-void addtoCoupling(int nspect) {
+void addtoCoupling(int nspect, int threadId) {
   const char routineName[] = "addtoCoupling";
   register int nact, n, k;
 
@@ -258,10 +293,19 @@ void addtoCoupling(int nspect) {
   AtomicContinuum *continuum;
   ActiveSet *as;
 
+  CMO_PROF_FUNC_START();
+
   twohc = 2.0 * HPLANCK * CLIGHT / CUBE(NM_TO_M);
 
   as = &spectrum.as[nspect];
-  nt = nspect % input.Nthreads;
+  // nt = nspect % input.Nthreads;
+  nt = threadId;
+  // if (input.Nthreads > 1)
+  // {
+  //   nt = (nspect / input.workSize) % input.Nthreads;
+  // } else {
+  //   nt = nspect % input.Nthreads;
+  // }
 
   /* --- Zero the cross coupling matrices --           -------------- */
 
@@ -327,6 +371,7 @@ void addtoCoupling(int nspect) {
       }
     }
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- addtoCoupling.c --------- */
 
@@ -343,6 +388,7 @@ void zeroRates(bool_t redistribute) {
          initialized.
          --                                            -------------- */
 
+  CMO_PROF_FUNC_START();
   for (n = 0; n < atmos.Natom; n++) {
     atom = &atmos.atoms[n];
     if (atom->active) {
@@ -364,16 +410,17 @@ void zeroRates(bool_t redistribute) {
       }
     }
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- zeroRates.c ------------- */
 
 /* ------- begin -------------------------- addtoRates.c ------------ */
 
 void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
-                bool_t redistribute) {
+                bool_t redistribute, int threadId) {
   register int nact, n, k;
 
-  int la, lamu, nt;
+  int la, lamu, nt, nTrans;
   double twohnu3_c2, twohc, hc_4PI, Bijxhc_4PI, wlamu, *Rij, *Rji, up_rate,
       *Stokes_Q, *Stokes_U, *Stokes_V;
 
@@ -382,6 +429,8 @@ void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
   AtomicLine *line;
   AtomicContinuum *continuum;
   pthread_mutex_t *rate_lock;
+  
+  CMO_PROF_FUNC_START();
 
   /* --- Calculate the radiative rates for atomic transitions.
 
@@ -393,7 +442,14 @@ void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
   twohc = 2.0 * HPLANCK * CLIGHT / CUBE(NM_TO_M);
 
   as = &spectrum.as[nspect];
-  nt = nspect % input.Nthreads;
+  nt = threadId;
+  // if (input.Nthreads > 1)
+  // {
+  //   nt = (nspect / input.workSize) % input.Nthreads;
+  // } else {
+  //   nt = nspect % input.Nthreads;
+  // }
+
 
   if (input.StokesMode == FULL_STOKES && containsPolarized(as)) {
 
@@ -414,8 +470,10 @@ void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
         if (redistribute && !line->PRD)
           Rij = NULL;
         else {
-          Rij = line->Rij;
-          Rji = line->Rji;
+          nTrans = line->nLine;
+          atom->rhacc[nt].lineRatesDirty[nTrans] = TRUE;
+          Rij = atom->rhacc[nt].RijLine[nTrans];
+          Rji = atom->rhacc[nt].RjiLine[nTrans];
           twohnu3_c2 = line->Aji / line->Bji;
 
           rate_lock = &line->rate_lock;
@@ -427,8 +485,9 @@ void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
           Rij = NULL;
         else {
           continuum = as->art[nact][n].ptype.continuum;
-          Rij = continuum->Rij;
-          Rji = continuum->Rji;
+          nTrans = continuum->nCont;
+          Rij = atom->rhacc[nt].RijCont[nTrans];
+          Rji = atom->rhacc[nt].RjiCont[nTrans];
           twohnu3_c2 = twohc / CUBE(spectrum.lambda[nspect]);
 
           rate_lock = &continuum->rate_lock;
@@ -441,19 +500,95 @@ void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
       /* --- Convention: Rij is the rate for transition i -> j -- ----- */
 
       if (Rij != NULL) {
-        if (input.Nthreads > 1)
-          pthread_mutex_lock(rate_lock);
-
+        double scr_Rij[atmos.Nspace];
+        double scr_Rji[atmos.Nspace];
         for (k = 0; k < atmos.Nspace; k++) {
           wlamu = atom->rhth[nt].Vij[n][k] * atom->rhth[nt].wla[n][k] * wmu;
-          Rij[k] += I[k] * wlamu;
-          Rji[k] += atom->rhth[nt].gij[n][k] * (twohnu3_c2 + I[k]) * wlamu;
+          scr_Rij[k] = I[k] * wlamu;
+          scr_Rji[k] = atom->rhth[nt].gij[n][k] * (twohnu3_c2 + I[k]) * wlamu;
+        }
+        // if (input.Nthreads > 1)
+        //   pthread_mutex_lock(rate_lock);
+
+        for (k = 0; k < atmos.Nspace; k++) {
+          Rij[k] += scr_Rij[k];
+          Rji[k] += scr_Rji[k];
         }
 
-        if (input.Nthreads > 1)
-          pthread_mutex_unlock(rate_lock);
+        // if (input.Nthreads > 1)
+        //   pthread_mutex_unlock(rate_lock);
       }
     }
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- addtoRates.c ------------ */
+
+void accumulate_Gamma(Atom* atom)
+{
+  // printf("Called %s\n", (atom->rhacc[7].Gamma == NULL) ? "NULL" : "FINE");
+  // printf("%s\n", atom->ID);
+  CMO_PROF_FUNC_START();
+  for (int ij = 0; ij < SQ(atom->Nlevel); ++ij)
+  {
+    for (int k = 0; k < atmos.Nspace; ++k)
+    {
+      for (int nt = 0; nt < input.Nthreads; ++nt)
+      {
+        atom->Gamma[ij][k] += atom->rhacc[nt].Gamma[ij][k];
+        atom->rhacc[nt].Gamma[ij][k] = 0.0;
+      }
+    }
+  }
+  CMO_PROF_FUNC_END();
+}
+
+void accumulate_rates_lines(Atom* atom)
+{
+  CMO_PROF_FUNC_START();
+  for (int kr = 0; kr < atom->Nline; ++kr)
+  {
+    bool_t dirty = FALSE;
+    for (int nt = 0; nt < input.Nthreads; ++nt)
+    {
+      if (atom->rhacc[nt].lineRatesDirty[kr])
+      {
+        dirty = TRUE;
+      }
+      atom->rhacc[nt].lineRatesDirty[kr] = FALSE;
+    }
+    if (dirty)
+    {
+      for (int k = 0; k < atmos.Nspace; ++k)
+      {
+        for (int nt = 0; nt < input.Nthreads; ++nt)
+        {
+          atom->line[kr].Rij[k] += atom->rhacc[nt].RijLine[kr][k];
+          atom->line[kr].Rji[k] += atom->rhacc[nt].RjiLine[kr][k];
+          atom->rhacc[nt].RijLine[kr][k] = 0.0;
+          atom->rhacc[nt].RjiLine[kr][k] = 0.0;
+        }
+      }
+    }
+  }
+  CMO_PROF_FUNC_END();
+}
+
+void accumulate_rates_cont(Atom* atom)
+{
+  CMO_PROF_FUNC_START();
+  for (int kr = 0; kr < atom->Ncont; ++kr)
+  {
+    for (int k = 0; k < atmos.Nspace; ++k)
+    {
+      for (int nt = 0; nt < input.Nthreads; ++nt)
+      {
+        atom->continuum[kr].Rij[k] += atom->rhacc[nt].RijCont[kr][k];
+        atom->continuum[kr].Rji[k] += atom->rhacc[nt].RjiCont[kr][k];
+        atom->rhacc[nt].RijCont[kr][k] = 0.0;
+        atom->rhacc[nt].RjiCont[kr][k] = 0.0;
+      }
+    }
+  }
+  CMO_PROF_FUNC_END();
+}

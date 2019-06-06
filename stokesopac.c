@@ -56,7 +56,8 @@ void StokesK(int nspect, int k, double chi_I, double K[4][4]) {
       K[2][3] = as->chip[k];
     }
   }
-  if (atmos.backgrflags[nspect].ispolarized) {
+  // if (atmos.backgrflags[nspect].ispolarized) {
+  if (atmos.backgrflags[nspect] & IS_POLARIZED) {
     K[0][1] += as->chi_c[atmos.Nspace + k];
     K[0][2] += as->chi_c[2 * atmos.Nspace + k];
     K[0][3] += as->chi_c[3 * atmos.Nspace + k];

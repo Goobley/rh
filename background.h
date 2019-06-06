@@ -42,11 +42,16 @@ void dFMetals(double *dFdne);
 void Hydrostatic(int NmaxIter, double iterLimit);
 
 void Background(bool_t analyze_output, bool_t equilibria_only);
+void cmo_init_background();
+void cmo_background(bool_t analyze_output, bool_t equilibria_only);
 void backgrOpac(int Nlambda, double *lambda);
 bool_t duplicateLevel(Atom *atom, char *label);
 bool_t duplicateLine(Atom *atom, char *labeli, char *labelj);
 void readBackground(int nspect, int mu, bool_t top_to_bottom);
+void cmo_load_background(int nspect, int mu, bool_t to_obs);
 int writeBackground(int nspect, int mu, bool_t to_obs, double *chi_c,
+                    double *eta_c, double *sca_c, double *chip_c);
+int cmo_store_background(int nspect, int mu, bool_t to_obs, double *chi_c,
                     double *eta_c, double *sca_c, double *chip_c);
 void writeBRS(void);
 void readBRS(void);
@@ -55,16 +60,22 @@ void readKuruczLines(char *fileName);
 int rlk_ascend(const void *v1, const void *v2);
 void rlk_locate(int N, RLK_Line *lines, double lambda, int *low);
 
+bool_t cmo_Hminus_bf(SplineState* s, double lambda, double *chi, double *eta);
 bool_t Hminus_bf(double lambda, double *chi, double *eta);
+bool_t cmo_Hminus_ff(double lambda, double *chi);
 bool_t Hminus_ff(double lambda, double *chi);
 bool_t Hminus_ff_long(double lambda, double *chi);
 bool_t Hydrogen_bf(double lambda, double *chi, double *eta);
 void Hydrogen_ff(double lambda, double *chi);
+bool_t cmo_H2minus_ff(double lambda, double *chi);
 bool_t H2minus_ff(double lambda, double *chi);
+bool_t cmo_H2plus_ff(double lambda, double *chi);
 bool_t H2plus_ff(double lambda, double *chi);
 bool_t Rayleigh(double lambda, Atom *atom, double *chi);
 bool_t Rayleigh_H2(double lambda, double *chi);
 void Thomson(double *chi);
+bool_t cmo_Metal_bf(SplineState* s, double lambda, int Nmetal, 
+                    Atom *metals, double *chi, double *eta);
 bool_t Metal_bf(double lambda, int Nmetal, Atom *metals, double *chi,
                 double *eta);
 bool_t OH_bf_opac(double lambda, double *chi, double *eta);

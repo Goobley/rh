@@ -28,6 +28,94 @@ extern Spectrum spectrum;
 extern InputData input;
 extern char messageStr[];
 
+int cmo_store_background(int nspect, int mu, bool_t to_obs, double *chi_c,
+                         double *eta_c, double *sca_c, double *chip_c) 
+{
+  int lamu = nspect * (2 * atmos.Nrays) + mu * 2 + to_obs; 
+  int recordSize = atmos.Nspace * sizeof(double);
+  int nRecStokes = 1;
+  int nRecords = 0;
+  if (atmos.backgrflags[nspect] & IS_POLARIZED)
+  {
+    nRecStokes = 4;
+  }
+
+  atmos.chi_b[lamu] = (double*)malloc(nRecStokes * recordSize);
+  for (int k = 0; k < nRecStokes * atmos.Nspace; ++k)
+  {
+    atmos.chi_b[lamu][k] = chi_c[k];
+  }
+  nRecords += nRecStokes;
+
+  if (input.magneto_optical && (atmos.backgrflags[nspect] & IS_POLARIZED))
+  {
+    atmos.chip_b[lamu] = (double*)malloc(3 * recordSize);
+    for (int k = 0; k < 3 * atmos.Nspace; ++k)
+    {
+      atmos.chip_b[lamu][k] = chip_c[k];
+    }
+    nRecords += 3;
+  }
+
+  atmos.eta_b[lamu] = (double*)malloc(nRecStokes * recordSize);
+  for (int k = 0; k < nRecStokes * atmos.Nspace; ++k)
+  {
+    atmos.eta_b[lamu][k] = eta_c[k];
+  }
+  nRecords += nRecStokes;
+
+  atmos.sca_b[lamu] = (double*)malloc(recordSize);
+  for (int k = 0; k < atmos.Nspace; ++k)
+  {
+    atmos.sca_b[lamu][k] = sca_c[k];
+  }
+  nRecords += 1;
+
+  if (lamu != 0)
+  {
+    int idx = lamu;
+    int minIdx = nspect * (2 * atmos.Nrays);
+    while (--idx >= minIdx && !atmos.chi_b[idx])
+    {
+      atmos.chi_b[idx] = atmos.chi_b[lamu];
+      atmos.eta_b[idx] = atmos.eta_b[lamu];
+      atmos.sca_b[idx] = atmos.sca_b[lamu];
+      if ((atmos.backgrflags[nspect] & IS_POLARIZED) && input.magneto_optical)
+      {
+        atmos.chip_b[idx] = atmos.chip_b[lamu];
+      }
+    }
+  }
+
+  return nRecords;
+}
+void cmo_load_background(int la, int mu, bool_t to_obs) 
+{
+  int lamu = la * (2 * atmos.Nrays) + mu * 2 + to_obs;
+  ActiveSet* as = &spectrum.as[la];
+  // int nRecStokes = 1;
+  // if (atmos.backgrflags[la] & IS_POLARIZED)
+  // {
+  //   nRecStokes = 4;
+  // }
+  // for (int k = 0; k < nRecStokes * atmos.Nspace; ++k)
+  //   as->chi_c[k] = atmos.chi_b[lamu][k];
+  // for (int k = 0; k < nRecStokes * atmos.Nspace; ++k)
+  //   as->eta_c[k] = atmos.eta_b[lamu][k];
+  // for (int k = 0; k < atmos.Nspace; ++k)
+  //   as->sca_c[k] = atmos.sca_b[lamu][k];
+  as->chi_c = atmos.chi_b[lamu];
+  as->eta_c = atmos.eta_b[lamu];
+  as->sca_c = atmos.sca_b[lamu];
+
+  if (input.magneto_optical && (atmos.backgrflags[la] & IS_POLARIZED))
+  {
+    // for (int k = 0; k < 3 * atmos.Nspace; ++k)
+    //   as->chip_c[k] = atmos.chip_b[lamu][k];
+    as->chip_c = atmos.chip_b[lamu];
+  }
+}
+
 /* ------- begin ----------------------------- storeBackground.c ---- */
 void storeBackground(int la, int mu, bool_t to_obs, double *chi_c,
                      double *eta_c, double *sca_c) {
@@ -272,7 +360,8 @@ void readBackground(int nspect, int mu, bool_t to_obs) {
          skip the proper amount of records --           ------------- */
 
   NrecStokes = 1;
-  if (atmos.backgrflags[nspect].ispolarized) {
+  // if (atmos.backgrflags[nspect].ispolarized) {
+  if (atmos.backgrflags[nspect] & IS_POLARIZED) {
     NskipStokes = 4;
     if (input.StokesMode == FULL_STOKES)
       NrecStokes = 4;
@@ -287,7 +376,8 @@ void readBackground(int nspect, int mu, bool_t to_obs) {
 
   /* --- Read off-diagonal elements propagation matrix K -- --------- */
 
-  if (atmos.backgrflags[nspect].ispolarized && input.magneto_optical) {
+  // if (atmos.backgrflags[nspect].ispolarized && input.magneto_optical) {
+  if ((atmos.backgrflags[nspect] & IS_POLARIZED) && input.magneto_optical) {
     if (input.StokesMode == FULL_STOKES)
       result &= (pread(atmos.fd_background, as->chip_c, 3 * recordsize,
                        offset) == 3 * recordsize);
@@ -334,7 +424,8 @@ int writeBackground(int nspect, int mu, bool_t to_obs, double *chi_c,
     recordno = atmos.backgrrecno[nspect];
   offset = recordno * recordsize;
 
-  if (atmos.backgrflags[nspect].ispolarized)
+  // if (atmos.backgrflags[nspect].ispolarized)
+  if (atmos.backgrflags[nspect] & IS_POLARIZED)
     NrecStokes = 4;
   else
     NrecStokes = 1;
@@ -350,7 +441,8 @@ int writeBackground(int nspect, int mu, bool_t to_obs, double *chi_c,
 
   /* --- Write off-diagonal elements of propagation matrix K -- ----- */
 
-  if (atmos.backgrflags[nspect].ispolarized && input.magneto_optical) {
+  // if (atmos.backgrflags[nspect].ispolarized && input.magneto_optical) {
+  if ((atmos.backgrflags[nspect] & IS_POLARIZED) && input.magneto_optical) {
     result &= (pwrite(atmos.fd_background, chip_c, 3 * recordsize, offset) ==
                3 * recordsize);
     Nwrite += 3;

@@ -72,6 +72,8 @@ void readValues(char *fp_keyword, int Nkeyword, Keyword *theKeywords) {
   /* --- Read input data line-by-line --                ------------- */
   while (getLineString(&fp_keyword, COMMENT_CHAR, line, exit_on_EOF = FALSE) !=
          EOF) {
+    // nread = sscanf(line, "%s = %s", keyword, value);
+    // printf("%s = %s\n", keyword, value);
     if ((nread = sscanf(line, "%s = %s", keyword, value)) != 2) {
       sprintf(messageStr, "Missing input value for keyword %s", keyword);
       Error(ERROR_LEVEL_2, routineName, messageStr);
@@ -379,6 +381,8 @@ void setThreadValue(char *value, void *pointer) {
       Error(WARNING, routineName, "Non-default thread scheduling inheritance");
     if (pthread_attr_setschedpolicy(&input.thread_attr, SCHED_OTHER))
       Error(WARNING, routineName, "Non-default thread scheduling policy");
+    if (pthread_attr_setstacksize(&input.thread_attr, 64*1024*1024))
+      Error(WARNING, routineName, "Unable to increase stack size");
 
     /* --- Suggest thread concurrency to the operating system -- ---- */
 

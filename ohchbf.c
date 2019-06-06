@@ -50,7 +50,9 @@ extern char messageStr[];
 bool_t OH_bf_opac(double lambda, double *chi, double *eta) {
   register int k;
 
-  int index, index2;
+  // int index, index2;
+  int index = 0;
+  int index2 = 0;
   double Eev, e_index, t_index, hc_kla, twohnu3_c2, kappa, stimEmis;
 
   static double TOH[NTOH] = {2000.00, 2500.00, 3000.00, 3500.00, 4000.00,
@@ -376,7 +378,9 @@ bool_t OH_bf_opac(double lambda, double *chi, double *eta) {
 bool_t CH_bf_opac(double lambda, double *chi, double *eta) {
   register int k;
 
-  int index, index2;
+  // int index, index2;
+  int index = 0;
+  int index2 = 0;
   double Eev, e_index, t_index, hc_kla, twohnu3_c2, kappa, stimEmis;
 
   static double TCH[NTCH] = {2000.00, 2500.00, 3000.00, 3500.00, 4000.00,

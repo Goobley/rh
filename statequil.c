@@ -24,6 +24,8 @@
 #include "statistics.h"
 #include "error.h"
 
+#include "CmoProfile.h"
+
 /* --- Function prototypes --                          -------------- */
 
 /* --- Global variables --                             -------------- */
@@ -39,6 +41,7 @@ void statEquil(Atom *atom, int isum) {
 
   int i_eliminate, Nlevel;
   double GamDiag, nmax_k, *n_k, **Gamma_k;
+  CMO_PROF_FUNC_START();
 
   getCPU(3, TIME_START, NULL);
 
@@ -98,6 +101,7 @@ void statEquil(Atom *atom, int isum) {
   freeMatrix((void **)Gamma_k);
 
   getCPU(3, TIME_POLL, "Stat Equil");
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- statEquil.c ------------- */
 

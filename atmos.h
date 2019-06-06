@@ -10,6 +10,7 @@
 #define __ATMOS_H__
 
 #include "atom.h"
+#include "background.h"
 
 /* --- Define structure to hold geometry-independent
        atmospheric quantities. --                      -------------- */
@@ -22,6 +23,7 @@
 
 #define NMAXINCLINATION 9
 #define NMAXAZIMUTH 5
+#define BACKGROUND_MAX_OVERLAP 10
 
 #define MOLECULAR_CONCENTRATION_FILE "molecules.out"
 
@@ -40,10 +42,20 @@ enum angleset {
   NO_SET
 };
 
-typedef struct {
-  bool_t hasline;
-  bool_t ispolarized;
-} flags;
+// typedef struct {
+//   bool_t hasline;
+//   bool_t ispolarized;
+// } flags;
+
+enum BackgroundFlags 
+{
+  // HAS_LINE = 1 << 0,
+  // IS_POLARIZED = 1 << 1
+  HAS_LINE = 0x1,
+  IS_POLARIZED = 0x2
+};
+typedef enum BackgroundFlags BackgroundFlags;
+typedef uint32_t flags;
 
 typedef struct {
   enum angleset set;
@@ -59,7 +71,7 @@ typedef struct {
   double *T, *ne, *vturb, totalAbund, avgMolWght, wght_per_H, gravity,
       vmicro_char, vmacro_tresh, lambda_ref, *wmu, *Tpf, *nHtot, **nH, *nHmin,
       *B, *gamma_B, *chi_B, B_char, **cos_gamma, **cos_2chi, **sin_2chi,
-      **chi_b, **eta_b, **sca_b;
+      **chi_b, **eta_b, **sca_b, **chip_b;
   AngleSet angleSet;
   Element *elements;
   Atom *H, *atoms, **activeatoms;
@@ -69,9 +81,18 @@ typedef struct {
   flags *backgrflags;
 } Atmosphere;
 
+typedef struct PassiveBbState
+{
+  bool_t initialize;
+  int Nlist;
+  struct Linelist lineList[BACKGROUND_MAX_OVERLAP];
+} PassiveBbState;
+
 /* --- Associated function prototypes --               -------------- */
 
-void freeAtmos(Atmosphere *atmos);
+void init_PassiveBbState(PassiveBbState* s);
+void free_PassiveBbState(PassiveBbState* s);
+// void freeAtmos(Atmosphere *atmos);
 void readAbundance(Atmosphere *atmos);
 void writeAtmos(Atmosphere *atmos);
 void Solve_ne(double *ne, bool_t fromscratch);
@@ -81,6 +102,10 @@ void initAngleSet(AngleSet *angleSet);
 
 flags passive_bb(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
                  double *eta, double *chip);
+
+flags passive_bb_stateless(PassiveBbState* s, double lambda, int nspect, 
+                           int mu, bool_t to_obs, double *chi,
+                           double *eta, double *chip);
 
 flags rlk_opacity(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
                   double *eta, double *scatt, double *chip);

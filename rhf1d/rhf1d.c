@@ -31,22 +31,112 @@
 #include "inputs.h"
 #include "xdr.h"
 
+#ifdef NO_MAIN
+  #define CMO_NO_PROF
+#endif
+#ifdef CMO_NO_PROF
+  #undef CMO_NO_PROF
+  #define SMALL_PROF
+#endif
+#include "CmoProfile.h"
+
+
 /* --- Function prototypes --                          -------------- */
 
 /* --- Global variables --                             -------------- */
 
+#ifndef NO_MAIN
 enum Topology topology = ONE_D_PLANE;
 
-Atmosphere atmos;
-Geometry geometry;
-Spectrum spectrum;
-ProgramStats stats;
-InputData input;
-CommandLine commandline;
+Atmosphere atmos = {0};
+Geometry geometry = {0};
+Spectrum spectrum = {0};
+ProgramStats stats = {0};
+InputData input = {0};
+CommandLine commandline = {0};
 char messageStr[MAX_MESSAGE_LENGTH];
+#else
+extern enum Topology topology;
 
+extern Atmosphere atmos;
+extern Geometry geometry;
+extern Spectrum spectrum;
+extern ProgramStats stats;
+extern InputData input;
+extern CommandLine commandline;
+extern char messageStr[];
+
+#endif
+
+static void init_profiler_id_sched(void* userdata, sched_uint threadId)
+{
+  CmoProfileId = threadId;
+}
 /* ------- begin -------------------------- rhf1d.c ----------------- */
+void cmo_init_misc()
+{
+#ifndef SMALL_PROF
+  cmo_allocate_prof_array(input.Nthreads, 128*1024*1024);
+#else
+  cmo_allocate_prof_array(input.Nthreads, 128);
+#endif
+  CMO_PROF_REGION_START("ProfileStart");
+  CMO_PROF_REGION_END("ProfileStart");
+  ProfileEntry* entry1 = &profiler[0].entries[profiler[0].end-2];
+  ProfileEntry* entry2 = &profiler[0].entries[profiler[0].end-1];
+  for (int i = 1; i < input.Nthreads; ++i)
+  {
+    cmo_prof_push_entry(&profiler[i], entry1->func, entry1->count, entry1->exit);
+    cmo_prof_push_entry(&profiler[i], entry2->func, entry2->count, entry2->exit);
+  }
 
+  sched_size neededMem;
+  scheduler_init(&input.sched, &neededMem, input.Nthreads, NULL);
+  input.schedMem = calloc(neededMem, 1);
+  scheduler_start(&input.sched, input.schedMem, init_profiler_id_sched);
+  // cmo_prof_start_timed_region(&profiler[CmoProfileId], __func__);
+
+  input.splineState = (SplineState*)calloc(input.Nthreads, sizeof(SplineState));
+  for (int i = 0; i < input.Nthreads; ++i)
+  {
+    init_SplineState(&input.splineState[i]);
+  }
+}
+
+void cmo_free_misc()
+{
+  CMO_PROF_REGION_START("ProfileEnd");
+  CMO_PROF_REGION_END("ProfileEnd");
+  ProfileEntry* entry1 = &profiler[0].entries[profiler[0].end-2];
+  ProfileEntry* entry2 = &profiler[0].entries[profiler[0].end-1];
+  for (int i = 1; i < input.Nthreads; ++i)
+  {
+    cmo_prof_push_entry(&profiler[i], entry1->func, entry1->count, entry1->exit);
+    cmo_prof_push_entry(&profiler[i], entry2->func, entry2->count, entry2->exit);
+  }
+  for (int i = 0; i < input.Nthreads; ++i)
+  {
+    char buf[512];
+    snprintf(buf, 512, "Prof_%02d.txt", i);
+    cmo_prof_print_file(&profiler[i], buf);
+  }
+  // cmo_free_prof(&profiler[CmoProfileId]);
+  cmo_free_prof_array(input.Nthreads);
+  for (int i = 0; i < input.Nthreads; ++i)
+  {
+    free_SplineState(&input.splineState[i]);
+  }
+  free(input.splineState);
+  input.splineState = NULL;
+  if (input.Nthreads > 1)
+  {
+    scheduler_stop(&input.sched, 1);
+    free(input.schedMem);
+  }
+  printTotalCPU();
+}
+
+#ifndef NO_MAIN
 int main(int argc, char *argv[]) {
   bool_t write_analyze_output, equilibria_only;
   int niter, nact;
@@ -55,12 +145,18 @@ int main(int argc, char *argv[]) {
   Molecule *molecule;
 
   /* --- Read input data and initialize --             -------------- */
+  // cmo_init_prof(&threadProf, 0, 1024*32);
+  // cmo_prof_start_timed_region(&threadProf, __func__);
 
   setOptions(argc, argv);
   getCPU(0, TIME_START, NULL);
   SetFPEtraps();
 
   readInput(NULL);
+  cmo_init_misc();
+
+  CMO_PROF_FUNC_START();
+
   spectrum.updateJ = TRUE;
 
   getCPU(1, TIME_START, NULL);
@@ -74,7 +170,9 @@ int main(int argc, char *argv[]) {
 
   getBoundary(&geometry);
 
-  Background(write_analyze_output = TRUE, equilibria_only = FALSE);
+  // Background(write_analyze_output = TRUE, equilibria_only = FALSE);
+  cmo_init_background();
+  cmo_background(write_analyze_output = TRUE, equilibria_only = FALSE);
   convertScales(&atmos, &geometry);
 
   getProfiles();
@@ -86,45 +184,48 @@ int main(int argc, char *argv[]) {
   /* --- Solve radiative transfer for active ingredients -- --------- */
 
   Iterate(input.NmaxIter, input.iterLimit);
+  CMO_PROF_FUNC_END();
+  cmo_free_misc();
 
-  adjustStokesMode();
-  niter = 0;
-  while (niter < input.NmaxScatter) {
-    if (solveSpectrum(FALSE, FALSE) <= input.iterLimit)
-      break;
-    niter++;
-  }
+  // CMO: Removed temporarily
+  // adjustStokesMode();
+  // niter = 0;
+  // while (niter < input.NmaxScatter) {
+  //   if (solveSpectrum(FALSE, FALSE) <= input.iterLimit)
+  //     break;
+  //   niter++;
+  // }
   /* --- Write output files --                         -------------- */
 
-  if (atmos.hydrostatic) {
-    geometry.scale = COLUMN_MASS;
-    convertScales(&atmos, &geometry);
-  }
-  getCPU(1, TIME_START, NULL);
+  // if (atmos.hydrostatic) {
+  //   geometry.scale = COLUMN_MASS;
+  //   convertScales(&atmos, &geometry);
+  // }
+  // getCPU(1, TIME_START, NULL);
 
-  writeInput();
-  writeAtmos(&atmos);
-  writeGeometry(&geometry);
-  writeSpectrum(&spectrum);
-  writeFlux(FLUX_DOT_OUT);
+  // writeInput();
+  // writeAtmos(&atmos);
+  // writeGeometry(&geometry);
+  // writeSpectrum(&spectrum);
+  // writeFlux(FLUX_DOT_OUT);
 
-  for (nact = 0; nact < atmos.Nactiveatom; nact++) {
-    atom = atmos.activeatoms[nact];
+  // for (nact = 0; nact < atmos.Nactiveatom; nact++) {
+  //   atom = atmos.activeatoms[nact];
 
-    writeAtom(atom);
-    writePopulations(atom);
-    writeRadRate(atom);
-    writeCollisionRate(atom);
-    writeDamping(atom);
-  }
-  for (nact = 0; nact < atmos.Nactivemol; nact++) {
-    molecule = atmos.activemols[nact];
-    writeMolPops(molecule);
-  }
+  //   writeAtom(atom);
+  //   writePopulations(atom);
+  //   writeRadRate(atom);
+  //   writeCollisionRate(atom);
+  //   writeDamping(atom);
+  // }
+  // for (nact = 0; nact < atmos.Nactivemol; nact++) {
+  //   molecule = atmos.activemols[nact];
+  //   writeMolPops(molecule);
+  // }
 
-  writeOpacity();
+  // writeOpacity();
 
-  getCPU(1, TIME_POLL, "Write output");
-  printTotalCPU();
+  // getCPU(1, TIME_POLL, "Write output");
 }
+#endif
 /* ------- end ---------------------------- rhf1d.c ----------------- */

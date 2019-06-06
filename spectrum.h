@@ -39,7 +39,7 @@ typedef struct {
   bool_t vacuum_to_air, updateJ;
   int Nspect, *PRDindex, fd_J, fd_J20, fd_Imu;
   double *lambda, **J, **I, **Stokes_Q, **Stokes_U, **Stokes_V, **J20, **Jgas,
-      **Ilast, **v_los;
+      **Ilast, **v_los, **IDepth, **SDepth, **chiDepth;
   ActiveSet *as;
   int *nc, *iprdh;
   double *cprdh;
@@ -47,16 +47,21 @@ typedef struct {
 
 /* --- Associated function prototypes --               -------------- */
 
-double Formal(int nspect, bool_t eval_operator, bool_t redistribute);
+double Formal(int nspect, bool_t eval_operator, bool_t redistribute, int threadId);
 double solveSpectrum(bool_t eval_operator, bool_t redistribute);
+double solve_spectrum_complete(bool_t eval_operator);
+double solve_spectrum_redist(bool_t eval_operator);
 
-void addtoGamma(int nspect, double wmu, double *P, double *Psi);
+void addtoGamma(int nspect, double wmu, double *P, double *Psi, int threadId);
 void addtoRates(int nspect, int mu, bool_t to_obs, double wmu, double *I,
-                bool_t redistribute);
+                bool_t redistribute, int threadId);
+void accumulate_Gamma(Atom* atom);
+void accumulate_rates_lines(Atom* atom);
+void accumulate_rates_cont(Atom* atom);
 void initScatter(void);
 
 void StokesK(int nspect, int k, double chi_I, double K[4][4]);
-void addtoCoupling(int nspect);
+void addtoCoupling(int nspect, int threadId);
 
 /* --- What type of lines are present in active set as? -- ---------- */
 
@@ -65,11 +70,11 @@ bool_t containsBoundBound(ActiveSet *as);
 bool_t containsPRDline(ActiveSet *as);
 bool_t containsActive(ActiveSet *as);
 
-void init_as(ActiveSet *as);
-void alloc_as(int nspect, bool_t crosscoupling);
-void free_as(int nspect, bool_t crosscoupling);
-void initSpectrum(void);
-void Opacity(int nspect, int mu, bool_t top_to_bottom, bool_t activate);
+// void init_as(ActiveSet *as);
+void alloc_as(int nspect, bool_t crosscoupling, int threadId);
+void free_as(int nspect, bool_t crosscoupling, int threadId);
+// void initSpectrum(void);
+void Opacity(int nspect, int mu, bool_t top_to_bottom, bool_t activate, int threadId);
 void Planck(long Nspace, double *T, double lambda0, double *Bnu);
 
 void readJlambda(int nspect, double *J);

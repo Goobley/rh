@@ -25,6 +25,7 @@
 #include "atmos.h"
 #include "geometry.h"
 #include "spectrum.h"
+#include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
 
@@ -58,6 +59,7 @@ void Piecewise_1D(int nspect, int mu, bool_t to_obs, double *chi, double *S,
 
   int k_start, k_end, dk, Ndep = geometry.Ndep;
   double dtau_uw, dtau_dw, dS_uw, I_upw, dS_dw, c1, c2, w[3], zmu, Bnu[2];
+  CMO_PROF_FUNC_START();
 
   zmu = 0.5 / geometry.muz[mu];
 
@@ -161,6 +163,7 @@ void Piecewise_1D(int nspect, int mu, bool_t to_obs, double *chi, double *S,
     dS_uw = dS_dw;
     dtau_uw = dtau_dw;
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- Piecewise_1D.c ---------- */
 

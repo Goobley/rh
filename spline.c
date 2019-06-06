@@ -10,9 +10,89 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
 
 #include "rh.h"
 
+void init_SplineState(SplineState* s)
+{
+  memset(s, 0, sizeof(SplineState));
+  // *s = {NULL};
+}
+
+void free_SplineState(SplineState* s)
+{
+  if (s->M)
+  {
+    free(s->M);
+    s->M = NULL;
+  }
+  if (s->u)
+  {
+    free(s->u);
+    s->u = NULL;
+  }
+}
+
+void spline_coef_stateless(SplineState* s, int N, double* x, double* y)
+{
+  s->ascend = (x[1] > x[0]) ? TRUE : FALSE;
+  s->xmin = (s->ascend) ? x[0] : x[N - 1];
+  s->xmax = (s->ascend) ? x[N - 1] : x[0];
+
+  double* q = s->M = (double*)realloc(s->M, N * sizeof(double));
+  s->u = (double*)realloc(s->u, N * sizeof(double));
+  double hj = x[1] - x[0];
+  double D = (y[1] - y[0]) / hj;
+
+  q[0] = s->u[0] = 0.0;
+  for (int j = 1; j < N - 1; j++) {
+    double hj1 = x[j + 1] - x[j];
+    double mu = hj / (hj + hj1);
+    double D1 = (y[j + 1] - y[j]) / hj1;
+
+    double p = mu * q[j - 1] + 2;
+    q[j] = (mu - 1) / p;
+    s->u[j] = ((D1 - D) * 6 / (hj + hj1) - mu * s->u[j - 1]) / p;
+
+    hj = hj1;
+    D = D1;
+  }
+
+  s->M[N - 1] = 0.0;
+  for (int j = N - 2; j >= 0; j--) {
+    s->M[j] = q[j] * s->M[j + 1] + s->u[j];
+  }
+  s->Ntable = N;
+  s->xtable = x;
+  s->ytable = y;
+}
+
+void spline_eval_stateless(SplineState* s, int N, double *x, double *y, bool_t hunt)
+{
+
+  for (int n = 0; n < N; n++) {
+    if (x[n] <= s->xmin)
+      y[n] = (s->ascend) ? s->ytable[0] : s->ytable[s->Ntable - 1];
+    else if (x[n] >= s->xmax)
+      y[n] = (s->ascend) ? s->ytable[s->Ntable - 1] : s->ytable[0];
+    else {
+      int j = 0;
+      if (hunt)
+        Hunt(s->Ntable, s->xtable, x[n], &j);
+      else
+        Locate(s->Ntable, s->xtable, x[n], &j);
+
+      double hj = s->xtable[j + 1] - s->xtable[j];
+      double fx = (x[n] - s->xtable[j]) / hj;
+      double fx1 = 1 - fx;
+
+      y[n] = fx1 * s->ytable[j] + fx * s->ytable[j + 1] +
+             (fx1 * (SQ(fx1) - 1) * s->M[j] + fx * (SQ(fx) - 1) * s->M[j + 1]) *
+                 SQ(hj) / 6.0;
+    }
+  }
+}
 /* --- Function prototypes --                          -------------- */
 
 /* --- Global variables --                             -------------- */

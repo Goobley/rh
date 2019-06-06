@@ -5,7 +5,6 @@
        Last modified: Mon Apr 18 06:31:57 2011 --
 
        --------------------------                      ----------RH-- */
-
 #ifndef __ATOM_H__
 #define __ATOM_H__
 
@@ -45,6 +44,7 @@ typedef struct MolTransition MolTransition;
 typedef struct AtomicLine AtomicLine;
 typedef struct ZeemanMultiplet ZeemanMultiplet;
 typedef struct rhthread rhthread;
+typedef struct RhAccumulate RhAccumulate;
 typedef struct Paschenstruct Paschenstruct;
 
 /* --- Structure defines radiative transition --       -------------- */
@@ -52,7 +52,7 @@ typedef struct Paschenstruct Paschenstruct;
 struct AtomicLine {
   bool_t symmetric, polarizable, Voigt, PRD;
   enum vdWaals vdWaals;
-  int i, j, Nlambda, Nblue, Ncomponent, Nxrd, fd_profile;
+  int i, j, Nlambda, Nblue, Ncomponent, Nxrd, fd_profile, nLine;
   double lambda0, *lambda, isotope_frac, g_Lande_eff, Aji, Bji, Bij, *Rij, *Rji,
       **phi, **phi_Q, **phi_U, **phi_V, **psi_Q, **psi_U, **psi_V, *wphi,
       *Qelast, Grad, cvdWaals[4], cStark, qcore, qwing, **rho_prd, *c_shift,
@@ -68,7 +68,7 @@ struct AtomicLine {
 
 typedef struct {
   bool_t hydrogenic;
-  int i, j, Nlambda, Nblue;
+  int i, j, Nlambda, Nblue, nCont;
   double lambda0, *lambda, isotope_frac, alpha0, *alpha, *Rij, *Rji;
   Atom *atom;
   pthread_mutex_t rate_lock;
@@ -115,6 +115,11 @@ struct rhthread {
   double **gij, **Vij, **wla, **chi_up, **chi_down, **Uji_down, *eta;
 };
 
+struct RhAccumulate {
+  double **Gamma, **RjiLine, **RijLine, **RjiCont, **RijCont;
+  bool_t *lineRatesDirty;
+};
+
 struct Atom {
   char ID[ATOM_ID_WIDTH + 1], **label, *popsinFile, *popsoutFile,
       atom_file[MAX_LINE_SIZE];
@@ -122,13 +127,13 @@ struct Atom {
   enum solution initial_solution;
   int Nlevel, Nline, Ncont, Nfixed, Nprd, *stage, periodic_table, activeindex;
   char *offset_coll;
-  double abundance, weight, *g, *E, **C, *vbroad, **n, **nstar, *ntotal,
-      **Gamma;
+  double abundance, weight, *g, *E, **C, *vbroad, **n, **nstar, *ntotal, **Gamma;
   AtomicLine *line;
   AtomicContinuum *continuum;
   FixedTransition *ft;
   struct Ng *Ng_n;
   rhthread *rhth;
+  RhAccumulate *rhacc;
   pthread_mutex_t Gamma_lock;
   char *fp_input;
 };
@@ -278,7 +283,7 @@ void adjustStokesMode();
 bool_t determinate(char *label, double g, int *n, double *S, int *L, double *J);
 double effectiveLande(AtomicLine *line);
 double Lande(double S, int L, double J);
-void StokesProfile(AtomicLine *line);
+// void StokesProfile(AtomicLine *line);
 ZeemanMultiplet *Zeeman(AtomicLine *line);
 ZeemanMultiplet *MolZeeman(MolecularLine *mrt);
 double MolLande_eff(MolecularLine *mrt);

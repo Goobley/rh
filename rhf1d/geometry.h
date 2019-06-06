@@ -23,6 +23,9 @@ typedef struct {
       **Ibottom;
 } Geometry;
 
+void cmo_init_misc();
+void cmo_free_misc();
+
 /* --- Associated function prototypes --               -------------- */
 
 void convertScales(Atmosphere *atmos, Geometry *geometry);

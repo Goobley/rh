@@ -23,10 +23,13 @@
 #include "inputs.h"
 #include "error.h"
 #include "xdr.h"
+#define CMO_NO_PROF
+#include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
 
 void loadBackground(int la, int mu, bool_t to_obs);
+void cmo_load_background(int la, int mu, bool_t to_obs);
 
 /* --- Global variables --                             -------------- */
 
@@ -38,7 +41,7 @@ extern char messageStr[];
 
 /* ------- begin -------------------------- Formal.c ---------------- */
 
-double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
+double Formal(int nspect, bool_t eval_operator, bool_t redistribute, int threadId) {
   const char routineName[] = "Formal";
   register int k, mu, n;
 
@@ -52,11 +55,12 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
       musq, threemu1, threemu2, *J, *J20, *lambda, sign, lambda_gas, lambda_prv,
       lambda_nxt, fac, dl, frac;
   ActiveSet *as;
+  CMO_PROF_FUNC_START();
 
   /* --- Retrieve active set as of transitions at wavelength nspect - */
 
   as = &spectrum.as[nspect];
-  alloc_as(nspect, eval_operator);
+  alloc_as(nspect, eval_operator, threadId);
 
   /* --- Check whether current active set includes a bound-bound
          and/or polarized transition and/or angle-dependent PRD
@@ -79,7 +83,8 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
 
   /* --- Check for polarized bound-bound transition in background - - */
 
-  polarized_c = atmos.backgrflags[nspect].ispolarized;
+  // polarized_c = atmos.backgrflags[nspect].ispolarized;
+  polarized_c = atmos.backgrflags[nspect] & IS_POLARIZED;
 
   /* --- Determine if we solve for I, or for I, Q, U, V -- ---------- */
 
@@ -92,7 +97,8 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
   angle_dep =
       (polarized_as || polarized_c || PRD_angle_dep != PRD_ANGLE_INDEP ||
        (input.backgr_pol && input.StokesMode == FULL_STOKES) ||
-       (atmos.moving && (boundbound || atmos.backgrflags[nspect].hasline)));
+      //  (atmos.moving && (boundbound || atmos.backgrflags[nspect].hasline)));
+       (atmos.moving && (boundbound || (atmos.backgrflags[nspect] & HAS_LINE))));
 
   /* --- Allocate temporary space --                   -------------- */
 
@@ -157,19 +163,20 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
       for (to_obs = 0; to_obs <= 1; to_obs++) {
         initialize = (mu == 0 && to_obs == 0);
 
-        if (initialize || atmos.backgrflags[nspect].hasline) {
+        if (initialize || (atmos.backgrflags[nspect] & HAS_LINE)) {
           if (input.backgr_in_mem) {
-            loadBackground(nspect, mu, to_obs);
+            // loadBackground(nspect, mu, to_obs);
+            cmo_load_background(nspect, mu, to_obs);
           } else {
             readBackground(nspect, mu, to_obs);
           }
         }
 
         if (initialize || boundbound)
-          Opacity(nspect, mu, to_obs, initialize);
+          Opacity(nspect, mu, to_obs, initialize, threadId);
 
         if (eval_operator)
-          addtoCoupling(nspect);
+          addtoCoupling(nspect, threadId);
         for (k = 0; k < Nspace; k++) {
           chi[k] = as->chi[k] + as->chi_c[k];
           S[k] = as->eta[k] + as->eta_c[k] + as->sca_c[k] * Jdag[k];
@@ -222,7 +229,7 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
         if (eval_operator) {
           for (k = 0; k < Nspace; k++)
             Psi[k] /= chi[k];
-          addtoGamma(nspect, wmu, I, Psi);
+          addtoGamma(nspect, wmu, I, Psi, threadId);
         }
 
         if (spectrum.updateJ) {
@@ -231,7 +238,7 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
 
           for (k = 0; k < Nspace; k++)
             J[k] += wmu * I[k];
-          addtoRates(nspect, mu, to_obs, wmu, I, redistribute);
+          addtoRates(nspect, mu, to_obs, wmu, I, redistribute, threadId);
 
           /* --- Accumulate anisotropy --            -------------- */
 
@@ -244,6 +251,7 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
 
           if (atmos.NPRDactive > 0 && input.PRD_angle_dep == PRD_ANGLE_APPROX &&
               atmos.Nrays > 1) {
+            CMO_PROF_REGION_START("Reg: PRDH");
             if (input.prdh_limit_mem) {
 
               sign = (to_obs) ? 1.0 : -1.0;
@@ -318,10 +326,19 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
               }
 
             } // prdh_limit_mem switch
+            CMO_PROF_REGION_END("Reg: PRDH");
           }   // Jgas accumulation endif
 
           if (containsPRDline(as) && input.PRD_angle_dep == PRD_ANGLE_DEP)
             writeImu(nspect, mu, to_obs, I);
+        }
+        // NOTE(cmo): Need to save everything from here
+        for (int k = 0; k < Nspace; ++k)
+        {
+          int muk = k * atmos.Nrays * 2 + mu * 2 + to_obs;
+          spectrum.IDepth[nspect][muk] = I[k];
+          spectrum.SDepth[nspect][muk] = S[k];
+          spectrum.chiDepth[nspect][muk] = chi[k];
         }
       }
 
@@ -338,14 +355,15 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
 
     /* --- The angle-independent case --               -------------- */
     if (input.backgr_in_mem) {
-      loadBackground(nspect, 0, 0);
+      // loadBackground(nspect, 0, 0);
+      cmo_load_background(nspect, 0, 0);
     } else {
       readBackground(nspect, 0, 0);
     }
 
-    Opacity(nspect, 0, 0, initialize = TRUE);
+    Opacity(nspect, 0, 0, initialize = TRUE, threadId);
     if (eval_operator)
-      addtoCoupling(nspect);
+      addtoCoupling(nspect, threadId);
 
     for (k = 0; k < Nspace; k++) {
       chi[k] = as->chi[k] + as->chi_c[k];
@@ -358,19 +376,31 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
       if (eval_operator) {
         for (k = 0; k < Nspace; k++)
           Psi[k] /= chi[k];
-        addtoGamma(nspect, geometry.wmu[mu], I, Psi);
+        addtoGamma(nspect, geometry.wmu[mu], I, Psi, threadId);
       }
 
       if (spectrum.updateJ) {
         for (k = 0; k < Nspace; k++)
           J[k] += I[k] * geometry.wmu[mu];
-        addtoRates(nspect, mu, 0, geometry.wmu[mu], I, redistribute);
+        addtoRates(nspect, mu, 0, geometry.wmu[mu], I, redistribute, threadId);
 
         /* --- Accumulate gas-frame mean intensity, which is the same
            as J in the angle-independent case ------------- */
         if (atmos.NPRDactive > 0 && input.PRD_angle_dep == PRD_ANGLE_APPROX) {
           for (k = 0; k < Nspace; k++)
             spectrum.Jgas[nspect][k] += I[k] * geometry.wmu[mu];
+        }
+      }
+      // NOTE(cmo): The I computed in the Feautrier solution is actually 
+      // P = 0.5 * (I+ + I-), so we can assign it to both to_obs directions.
+      for (int to_obs = 0; to_obs <= 1; ++to_obs)
+      {
+        for (int k = 0; k < Nspace; ++k)
+        {
+          int muk = k * atmos.Nrays * 2 + mu * 2 + to_obs;
+          spectrum.IDepth[nspect][muk] = I[k];
+          spectrum.SDepth[nspect][muk] = S[k];
+          spectrum.chiDepth[nspect][muk] = chi[k];
         }
       }
     }
@@ -392,7 +422,8 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
   }
   /* --- Clean up --                                 ---------------- */
 
-  free_as(nspect, eval_operator);
+  CMO_PROF_REGION_START("Reg: CleanUp");
+  free_as(nspect, eval_operator, threadId);
   if (eval_operator)
     free(Psi);
 
@@ -414,6 +445,8 @@ double Formal(int nspect, bool_t eval_operator, bool_t redistribute) {
       free(J20);
   }
 
+  CMO_PROF_REGION_END("Reg: CleanUp");
+  CMO_PROF_FUNC_END();
   return dJmax;
 }
 /* ------- end ---------------------------- Formal.c ---------------- */

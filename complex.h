@@ -41,11 +41,11 @@ complex cmplx_subt(complex a, complex b);
 
 /* --- Fourier transforms --                           -------------- */
 
-void four1(int NN, double *data, int sign);
-void fourn(int Ndim, int *NN, double *data, int sign);
+// void four1(int NN, double *data, int sign);
+// void fourn(int Ndim, int *NN, double *data, int sign);
 
-void fourier_(int *Ndim, int *NN, double *data, int *sign, int *format,
-              double *work);
+// void fourier_(int *Ndim, int *NN, double *data, int *sign, int *format,
+//               double *work);
 
 #endif /* !__COMPLEX_H__ */
 

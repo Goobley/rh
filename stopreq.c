@@ -17,6 +17,7 @@
 
 #include "rh.h"
 #include "error.h"
+#include "CmoProfile.h"
 
 #define STOP_REQUEST_FILE "STOP_RH"
 
@@ -29,14 +30,17 @@ extern char messageStr[];
 /* ------- begin -------------------------- StopRequested.c --------- */
 
 bool_t StopRequested() {
+  CMO_PROF_FUNC_START();
   const char routineName[] = "StopRequested";
 
   if (fopen(STOP_REQUEST_FILE, "r")) {
     sprintf(messageStr, "Stopping iterations because file %s is present",
             STOP_REQUEST_FILE);
     Error(WARNING, routineName, messageStr);
+    CMO_PROF_FUNC_END();
     return TRUE;
   } else {
+    CMO_PROF_FUNC_END();
     return FALSE;
   }
 }

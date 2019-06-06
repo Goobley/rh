@@ -33,16 +33,19 @@ void Error(enum errorlevel level, const char *routineName,
   case MESSAGE:
     if (!commandline.quiet)
       fprintf(commandline.logfile, "%s", (messageStr) ? messageStr : "");
+      fflush(commandline.logfile);
     return;
   case WARNING:
     fprintf(commandline.logfile, "\n-WARNING in routine %s\n %s\n", routineName,
             (messageStr) ? messageStr : " (Undocumented)\n");
+    fflush(commandline.logfile);
     return;
   default:
     if (level < defaultLevel) {
       fprintf(commandline.logfile, "\a\n-ERROR in routine %s\n %s \n %s\n",
               routineName, (messageStr) ? messageStr : " (Undocumented)\n",
               "Trying to continue.....");
+      fflush(commandline.logfile);
       return;
     } else {
       sprintf(errorStr, "\a\n\n-FATAL_ERROR in routine %s\n %s \n %s\n",
@@ -50,8 +53,10 @@ void Error(enum errorlevel level, const char *routineName,
               "Exiting.....");
 
       fprintf(commandline.logfile, "%s", errorStr);
+      fflush(commandline.logfile);
       if (commandline.logfile != stderr)
         fprintf(stderr, "%s", errorStr);
+        fflush(stderr);
 
       if (errno)
         perror(routineName);

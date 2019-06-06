@@ -41,6 +41,14 @@
 #include "inputs.h"
 #include "xdr.h"
 
+#define SCHED_IMPLEMENTATION
+#define SCHED_PIPE_SIZE_LOG2 10
+#define SCHED_SPIN_COUNT_MAX 16
+#include "sched.h"
+
+#define CMO_PROFILE_IMPL
+#include "CmoProfile.h"
+
 /* --- Function prototypes --                          -------------- */
 
 void readJgas(double **J);
@@ -54,6 +62,452 @@ extern CommandLine commandline;
 extern char messageStr[];
 
 extern enum Topology topology;
+
+typedef struct LaRange
+{
+  int start;
+  int end;
+} LaRange;
+
+typedef struct InterpBounds
+{
+  int* lowerBracket1;
+  int* lowerBracket2;
+  int* upperBracket1;
+  int* upperBracket2;
+} InterpBounds;
+
+// Returns the index for which target is the exclusive lower 
+// bound of the array a with length n, i.e. a[result:] > target
+static int lower_bound_exclusive(double* a, int n, double target)
+{
+  int low = 0;
+  int high = n;
+
+  while (low != high)
+  {
+    int mid = (low + high) / 2;
+    if (a[mid] <= target)
+    {
+      low = mid + 1;
+    }
+    else
+    {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+// Returns the index for which target is the inclusive upper 
+// bound of the array a with length n, i.e. a[:result+1] <= target
+static int upper_bound_inclusive(double* a, int n, double target)
+{
+  int lower = lower_bound_exclusive(a, n, target);
+  return lower - 1;
+}
+
+// Returns the index for which target is the inclusive lower 
+// bound of the array a with length n, i.e. a[result:] >= target
+static int lower_bound_inclusive(double* a, int n, double target)
+{
+  int low = 0;
+  int high = n;
+
+  while (low != high)
+  {
+    int mid = (low + high) / 2;
+    if (a[mid] >= target)
+    {
+      high = mid;
+    }
+    else
+    {
+      low = mid + 1;
+    }
+  }
+  return low;
+}
+
+// Returns the index for which target is the exclusive upper 
+// bound of the array a with length n, i.e. a[:result+1] < target
+static int upper_bound_exclusive(double* a, int n, double target)
+{
+  int low = 0;
+  int high = n;
+
+  while (low != high)
+  {
+    int mid = (low + high) / 2;
+    if (a[mid] <= target)
+    {
+      low = mid + 1;
+    }
+    else
+    {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+void fast_ncoeff(int la, InterpBounds* bounds)
+{
+  double *lambda = spectrum.lambda;
+  for (int mu = 0; mu < atmos.Nrays; ++mu)
+  {
+    for (int to_obs = 0; to_obs <= 1; ++to_obs)
+    {
+      double sign = (to_obs) ? 1.0 : -1.0;
+
+      for (int k = 0; k < atmos.Nspace; ++k)
+      {
+        int lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) + 
+                    mu * (2 * atmos.Nspace) + to_obs * (atmos.Nspace) + k;
+        int ncoef = 0;
+
+        double fac = (1.0 + spectrum.v_los[mu][k] * sign / CLIGHT);
+        int prvIdx = MAX(la - 1, 0);
+        int nxtIdx = MIN(la + 1, spectrum.Nspect - 1);
+        double lambda_prv = lambda[prvIdx] * fac;
+        double lambda_gas = lambda[la] * fac;
+        double lambda_nxt = lambda[nxtIdx] * fac;
+
+        // We know the order of these 3 must be preserved, they are multiplied by the same factor, and the array is monotonic
+
+        if (prvIdx != la)
+        {
+          // Find points for which > lambda_prv and <= lambda_gas
+          int low = lower_bound_exclusive(lambda, spectrum.Nspect, lambda_prv);
+          if (low < spectrum.Nspect)
+          {
+            int high = upper_bound_inclusive(&lambda[low], spectrum.Nspect-low, lambda_gas);
+            high += low;
+            ncoef += (high - low) + 1;
+            bounds->lowerBracket1[lamuk] = low;
+            bounds->upperBracket1[lamuk] = high + 1;
+          }
+          else
+          {
+            assert(FALSE && "Lower bound found for lambda_prv too big");
+          }
+        }
+        else
+        {
+          // Find number of points for which lambda <= lambda_gas
+          int high = upper_bound_inclusive(lambda, spectrum.Nspect, lambda_gas);
+          ncoef += high + 1;
+          bounds->lowerBracket1[lamuk] = 0;
+          bounds->upperBracket1[lamuk] = high + 1;
+        }
+
+        if (la != nxtIdx)
+        {
+          // Find points for which > lambda_gas and < lambda_nxt
+          int low = lower_bound_exclusive(lambda, spectrum.Nspect, lambda_gas);
+          if (low < spectrum.Nspect)
+          {
+            int high = upper_bound_exclusive(&lambda[low], spectrum.Nspect - low, lambda_nxt);
+            high += low;
+            ncoef += (high - low) - 1;
+            bounds->lowerBracket2[lamuk] = low;
+            bounds->upperBracket2[lamuk] = high - 1;
+          }
+          else
+          {
+            assert(FALSE && "Lower bound found for lambda_gas too big");
+          }
+        }
+        else
+        {
+          // Find number of points for which lambda >= lambda_gas
+          int low = lower_bound_inclusive(lambda, spectrum.Nspect, lambda_gas);
+          ncoef += (spectrum.Nspect - low);
+          bounds->lowerBracket2[lamuk] = low;
+          bounds->upperBracket2[lamuk] = spectrum.Nspect;
+        }
+        spectrum.nc[lamuk] = ncoef;
+      }
+    }
+  }
+}
+
+void ncoeff_impl(int la)
+{
+  int mu, to_obs, lamuk, ncoef, sign, k;
+  long int idx;
+  double *lambda, fac, lambda_prv, lambda_gas, lambda_nxt, dl;
+  lambda = spectrum.lambda;
+
+  for (mu = 0; mu < atmos.Nrays; mu++) {
+    for (to_obs = 0; to_obs <= 1; to_obs++) {
+
+      sign = (to_obs) ? 1.0 : -1.0;
+
+      for (k = 0; k < atmos.Nspace; k++) {
+
+        lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) +
+                mu * (2 * atmos.Nspace) + to_obs * (atmos.Nspace) + k;
+
+        ncoef = 0;
+
+        // previous, current and next wavelength shifted to gas rest frame
+        fac = (1. + spectrum.v_los[mu][k] * sign / CLIGHT);
+        lambda_prv = lambda[MAX(la - 1, 0)] * fac;
+        lambda_gas = lambda[la] * fac;
+        lambda_nxt = lambda[MIN(la + 1, spectrum.Nspect - 1)] * fac;
+
+        // do lambda_prv and lambda_gas bracket lambda points?
+        if (lambda_prv != lambda_gas) {
+          dl = lambda_gas - lambda_prv;
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+              ncoef = ncoef + 1;
+          }
+        } else {
+          // edge case, use constant extrapolation for lambda[idx]<lambda
+          // gas
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] <= lambda_gas)
+              ncoef = ncoef + 1;
+          }
+        }
+
+        // do lambda_gas and lambda_nxt bracket lambda points?
+        if (lambda_gas != lambda_nxt) {
+          dl = lambda_nxt - lambda_gas;
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] > lambda_gas && lambda[idx] < lambda_nxt)
+              ncoef = ncoef + 1;
+          }
+        } else {
+          // edge case, use constant extrapolation for lambda[idx]>lambda
+          // gas
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] >= lambda_gas)
+              ncoef = ncoef + 1;
+          }
+        }
+        spectrum.nc[lamuk] = ncoef;
+      }
+    }
+  }
+}
+
+void prdh_interp_coeffs(int la)
+{
+  long int idx;
+  int mu, to_obs, sign, k, lamuk, lc;
+  double fac, *lambda, lambda_prv, lambda_gas, lambda_nxt, dl;
+  lambda = spectrum.lambda;
+
+  for (mu = 0; mu < atmos.Nrays; mu++) {
+    for (to_obs = 0; to_obs <= 1; to_obs++) {
+
+      sign = (to_obs) ? 1.0 : -1.0;
+
+      for (k = 0; k < atmos.Nspace; k++) {
+
+        lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) +
+                mu * (2 * atmos.Nspace) + to_obs * (atmos.Nspace) + k;
+
+        // starting index for storage for this lamuk point
+        lc = (lamuk == 0) ? 0 : spectrum.nc[lamuk - 1];
+
+        // previous, current and next wavelength shifted to gas rest frame
+        fac = (1. + spectrum.v_los[mu][k] * sign / CLIGHT);
+        lambda_prv = lambda[MAX(la - 1, 0)] * fac;
+        lambda_gas = lambda[la] * fac;
+        lambda_nxt = lambda[MIN(la + 1, spectrum.Nspect - 1)] * fac;
+
+        // do lambda_prv and lambda_gas bracket lambda points?
+        if (lambda_prv != lambda_gas) {
+          dl = lambda_gas - lambda_prv;
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] > lambda_prv && lambda[idx] <= lambda_gas) {
+              // bracketed point found
+              spectrum.iprdh[lc] = idx;
+              spectrum.cprdh[lc] = (lambda[idx] - lambda_prv) / dl;
+              lc++;
+            }
+          }
+        } else {
+          // edge case, use constant extrapolation for lambda[idx]<lambda
+          // gas
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] <= lambda_gas) {
+              spectrum.iprdh[lc] = idx;
+              spectrum.cprdh[lc] = 1.0;
+              lc++;
+            }
+          }
+        }
+
+        // do lambda_gas and lambda_nxt bracket lambda points?
+        if (lambda_gas != lambda_nxt) {
+          dl = lambda_nxt - lambda_gas;
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] > lambda_gas && lambda[idx] < lambda_nxt) {
+              // bracketed point found
+              spectrum.iprdh[lc] = idx;
+              spectrum.cprdh[lc] = 1.0 - (lambda[idx] - lambda_gas) / dl;
+              lc++;
+            }
+          }
+        } else {
+          // edge case, use constant extrapolation for lambda[idx]>lambda
+          // gas
+          for (idx = 0; idx < spectrum.Nspect; idx++) {
+            if (lambda[idx] >= lambda_gas) {
+              spectrum.iprdh[lc] = idx;
+              spectrum.cprdh[lc] = 1.0;
+              lc++;
+            }
+          }
+        }
+      } // k
+    }   // to_obs
+  }     // mu
+}
+
+void fast_prdh_coeffs(int la, InterpBounds* bounds)
+{
+  double* lambda = spectrum.lambda;
+  for (int mu = 0; mu < atmos.Nrays; ++mu)
+  {
+    for (int to_obs = 0; to_obs <= 1; ++to_obs)
+    {
+      double sign = to_obs ? 1.0 : -1.0;
+      for (int k = 0; k < atmos.Nspace; ++k)
+      {
+        int lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) +
+                    mu * (2 * atmos.Nspace) + to_obs * atmos.Nspace + k;
+        int lc = (lamuk == 0) ? 0 : spectrum.nc[lamuk - 1];
+        double fac = (1.0 + spectrum.v_los[mu][k] * sign / CLIGHT);
+        int prvIdx = MAX(la - 1, 0);
+        int nxtIdx = MIN(la + 1, spectrum.Nspect - 1);
+        double lambda_prv = lambda[prvIdx] * fac;
+        double lambda_gas = lambda[la] * fac;
+        double lambda_nxt = lambda[nxtIdx] * fac;
+
+        if (prvIdx != la)
+        {
+          double dl = lambda_gas - lambda_prv;
+          for (int idx = bounds->lowerBracket1[lamuk]; 
+                   idx < bounds->upperBracket1[lamuk]; 
+                   ++idx)
+          {
+            spectrum.iprdh[lc] = idx;
+            spectrum.cprdh[lc++] = (lambda[idx] - lambda_prv) / dl;
+          }
+        }
+        else
+        {
+          for (int idx = bounds->lowerBracket1[lamuk]; 
+                   idx < bounds->upperBracket1[lamuk]; 
+                   ++idx)
+          {
+            spectrum.iprdh[lc] = idx;
+            spectrum.cprdh[lc++] = 1.0;
+          }
+        }
+
+        if (la != nxtIdx)
+        {
+          double dl = lambda_nxt - lambda_gas;
+          for (int idx = bounds->lowerBracket2[lamuk]; 
+                   idx < bounds->upperBracket2[lamuk]; 
+                   ++idx)
+          {
+            spectrum.iprdh[lc] = idx;
+            spectrum.cprdh[lc++] = (lambda[idx] - lambda_gas) / dl;
+          }
+        }
+        else
+        {
+          for (int idx = bounds->lowerBracket2[lamuk]; 
+                   idx < bounds->upperBracket2[lamuk]; 
+                   ++idx)
+          {
+            spectrum.iprdh[lc] = idx;
+            spectrum.cprdh[lc++] = 1.0;
+          }
+        }
+      }
+    }
+  }
+}
+
+void* count_coeffs_pthread(void *userdata)
+{
+  LaRange* range;
+  int la;
+
+  range = (LaRange*)userdata;
+
+  for (la = range->start; la < range->end; ++la)
+  {
+    ncoeff_impl(la);
+  }
+  return NULL;
+}
+
+static void count_coeffs_sched(void *userdata, struct scheduler *s, struct sched_task_partition range, sched_uint nt)
+{
+  CMO_PROF_FUNC_START();
+  for (int la = range.start; la < range.end; ++la)
+  {
+    ncoeff_impl(la);
+  }
+  CMO_PROF_FUNC_END();
+}
+
+static void count_coeffs_sched_new(void *userdata, struct scheduler *s, struct sched_task_partition range, sched_uint nt)
+{
+  CMO_PROF_FUNC_START();
+  InterpBounds* bounds = (InterpBounds*)userdata;
+  for (int la = range.start; la < range.end; ++la)
+  {
+    fast_ncoeff(la, bounds);
+  }
+  CMO_PROF_FUNC_END();
+}
+
+void* prdh_coeffs_pthread(void *userdata)
+{
+  LaRange* range;
+  int la;
+
+  range = (LaRange*)userdata;
+
+  for (la = range->start; la < range->end; ++la)
+  {
+    prdh_interp_coeffs(la);
+  }
+
+  return NULL;
+}
+
+static void prdh_coeffs_sched(void *userdata, struct scheduler *s, struct sched_task_partition range, sched_uint nt)
+{
+  CMO_PROF_FUNC_START();
+  for (int la = range.start; la < range.end; ++la)
+  {
+    prdh_interp_coeffs(la);
+  }
+  CMO_PROF_FUNC_END();
+}
+
+static void prdh_coeffs_sched_new(void *userdata, struct scheduler *s, struct sched_task_partition range, sched_uint nt)
+{
+  CMO_PROF_FUNC_START();
+  InterpBounds* bounds = (InterpBounds*)userdata;
+  for (int la = range.start; la < range.end; ++la)
+  {
+    fast_prdh_coeffs(la, bounds);
+  }
+  CMO_PROF_FUNC_END();
+}
+
 
 /* ------- begin -------------------------- initSolution.c ---------- */
 
@@ -74,7 +528,14 @@ void initSolution(Atom *atom, Molecule *molecule) {
   long int idx, lc;
   double *lambda, fac, lambda_prv, lambda_gas, lambda_nxt, dl, frac, lag;
   FILE *fp;
+  int Nthreads, nt;
+  LaRange *laIdxs;
+  pthread_t *threadIds;
 
+  // workSize = spectrum.Nspect / (input.Nthreads * 64);
+  // workSize = MAX(workSize, 1);
+
+  CMO_PROF_FUNC_START();
   getCPU(2, TIME_START, NULL);
 
   /* Collisional-radiative switching ? */
@@ -86,6 +547,14 @@ void initSolution(Atom *atom, Molecule *molecule) {
   /* --- Allocate space for angle-averaged mean intensity -- -------- */
   if (!input.limit_memory)
     spectrum.J = matrix_double(spectrum.Nspect, atmos.Nspace);
+
+  int maxMuk = atmos.Nspace * atmos.Nrays * 2;
+  if (!spectrum.IDepth)
+  {
+    spectrum.IDepth = matrix_double(spectrum.Nspect, maxMuk);
+    spectrum.SDepth = matrix_double(spectrum.Nspect, maxMuk);
+    spectrum.chiDepth = matrix_double(spectrum.Nspect, maxMuk);
+  }
 
   /* --- If we do background polarization we need space for the
      anisotropy --                               -------------- */
@@ -104,6 +573,62 @@ void initSolution(Atom *atom, Molecule *molecule) {
     for (mu = 0; mu < atmos.Nrays; mu++) {
       for (k = 0; k < atmos.Nspace; k++) {
         spectrum.v_los[mu][k] = vproject(k, mu); // / vbroad[k];
+      }
+    }
+
+    for (nact = 0; nact < atmos.Nactiveatom; nact++) {
+
+      atom = atmos.activeatoms[nact];
+
+      for (kr = 0; kr < atom->Nline; kr++) {
+
+        line = &atom->line[kr];
+
+        if (line->PRD) {
+
+          /*	  line->gII  = (double **) malloc(atmos.Nrays * sizeof(double
+          *));
+
+          for (k = 0;  k < atmos.Nspace;  k++) {
+            for (la = 0 ;  la < line->Nlambda;  la++) {
+
+              // second index in line.gII array
+              lak= k * line->Nlambda + line->Nlambda;
+
+              q_emit = (line->lambda[la] - line->lambda0) * CLIGHT /
+                (line->lambda0 * atom->vbroad[k]);
+
+
+              if (fabs(q_emit) < PRD_QCORE) {
+                q0 = -PRD_QWING;
+                qN =  PRD_QWING;
+              } else {
+                if (fabs(q_emit) < PRD_QWING) {
+                  if (q_emit > 0.0) {
+                    q0 = -PRD_QWING;
+                    qN = q_emit + PRD_QSPREAD;
+                  } else {
+                    q0 = q_emit - PRD_QSPREAD;
+                    qN = PRD_QWING;
+                  }
+                } else {
+                  q0 = q_emit - PRD_QSPREAD;
+                  qN = q_emit + PRD_QSPREAD;
+                }
+              }
+              Np = (int) ((qN - q0) / PRD_DQ) + 1;
+
+              line->gII[lak]= (double *) malloc(Np*sizeof(double));
+
+            }
+            }*/
+
+          Nsr = MAX(3 * PRD_QWING, 2 * PRD_QSPREAD) / PRD_DQ + 1;
+          if (line->gII != NULL)
+            freeMatrix((void **)line->gII);
+          line->gII = matrix_double(atmos.Nspace * line->Nlambda, Nsr);
+          line->gII[0][0] = -1.0;
+        }
       }
     }
 
@@ -173,9 +698,20 @@ void initSolution(Atom *atom, Molecule *molecule) {
 
       /* --- keeps track of where to get indices and interpolation
              coefficients in spectrum.iprhh and spectrum.cprdh --- */
-      spectrum.nc = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
-                                  atmos.Nspace * sizeof(int));
+      if (!spectrum.nc)
+      {
+        spectrum.nc = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
+                                    atmos.Nspace * sizeof(int));
+      }
+      else
+      {
+        memset(spectrum.nc, 0,
+               2 * atmos.Nrays * spectrum.Nspect * atmos.Nspace * sizeof(int));
+      }
+      
 
+      InterpBounds bounds;
+      if (FALSE) {
       for (la = 0; la < spectrum.Nspect; la++) {
         for (mu = 0; mu < atmos.Nrays; mu++) {
           for (to_obs = 0; to_obs <= 1; to_obs++) {
@@ -239,17 +775,143 @@ void initSolution(Atom *atom, Molecule *molecule) {
           }   // to_obs
         }     // mu
       }       // la
+      } else {
+        if (input.Nthreads > 1) {
+          if (FALSE)
+          {
+          laIdxs = (LaRange*)malloc(input.Nthreads * sizeof(LaRange));
+          threadIds = (pthread_t*)malloc(input.Nthreads * sizeof(pthread_t));
 
+          for (la = 0; la < spectrum.Nspect; la += input.Nthreads * input.workSize) {
+            if (la + input.Nthreads * input.workSize <= spectrum.Nspect) {
+              Nthreads = input.Nthreads;
+            } else {
+              Nthreads = (spectrum.Nspect - la) / input.workSize;
+              if (((spectrum.Nspect - la) % input.workSize) != 0) {
+                // Handle remaining odd-sized batch
+                Nthreads += 1;
+              }
+            }
+
+            for (nt = 0; nt < Nthreads; ++nt) {
+              laIdxs[nt].start = la + nt * input.workSize;
+              laIdxs[nt].end = la + (nt + 1) * input.workSize;
+            }
+            if (laIdxs[Nthreads-1].end > spectrum.Nspect) {
+              laIdxs[Nthreads-1].end = spectrum.Nspect;
+            }
+            for (nt = 0; nt < Nthreads; ++nt) {
+              pthread_create(&threadIds[nt], &input.thread_attr, count_coeffs_pthread, &laIdxs[nt]);
+            }
+
+            for (nt = 0; nt < Nthreads; ++nt) {
+              pthread_join(threadIds[nt], NULL);
+            }
+          }
+          free(laIdxs);
+          free(threadIds);
+          }
+          else
+          {
+            bounds.lowerBracket1 = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
+                                    atmos.Nspace * sizeof(int));
+            bounds.lowerBracket2 = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
+                                    atmos.Nspace * sizeof(int));
+            bounds.upperBracket1 = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
+                                    atmos.Nspace * sizeof(int));
+            bounds.upperBracket2 = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
+                                    atmos.Nspace * sizeof(int));
+
+            {
+              struct sched_task task;
+              scheduler_add(&input.sched, &task, count_coeffs_sched_new, &bounds, spectrum.Nspect, input.workSize);
+              scheduler_join(&input.sched, &task);
+            }
+
+          }
+          // CMO_PROF_REGION_START("OLD");
+          // {
+          //   struct sched_task task;
+          //   scheduler_add(&input.sched, &task, count_coeffs_sched, NULL, spectrum.Nspect, 192);
+          //   scheduler_join(&input.sched, &task);
+          // }
+          // CMO_PROF_REGION_END("OLD");
+          
+        } else {
+          for (la = 0; la < spectrum.Nspect; la++) {
+            ncoeff_impl(la);
+          }
+        }
+
+        // int* oldNc = spectrum.nc;
+        // spectrum.nc = (int *)malloc(2 * atmos.Nrays * spectrum.Nspect *
+        //                             atmos.Nspace * sizeof(int));
+        // CMO_PROF_REGION_START("NEW");
+        // {
+        //   struct sched_task task;
+        //   scheduler_add(&input.sched, &task, count_coeffs_sched_new, NULL, spectrum.Nspect, 192);
+        //   scheduler_join(&input.sched, &task);
+        // }
+        // CMO_PROF_REGION_END("NEW");
+        // for (la = 0; la < spectrum.Nspect; la++) {
+        //   for (mu = 0; mu < atmos.Nrays; mu++) {
+        //     for (to_obs = 0; to_obs <= 1; to_obs++) {
+        //       for (k = 0; k < atmos.Nspace; k++) {
+
+        //         lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) +
+        //                 mu * (2 * atmos.Nspace) + to_obs * (atmos.Nspace) + k;
+        //         if (oldNc[lamuk] != spectrum.nc[lamuk])
+        //         {
+        //           printf("It's all gone to shit :(\n");
+        //           printf("Old: %d, New: %d, idx: %d\n", oldNc[lamuk], spectrum.nc[lamuk], lamuk);
+        //           assert(FALSE);
+        //         }
+        //       }
+        //     }
+        //   }
+        // }
+        // printf("All Good :)\n");
+        // free (oldNc);
+
+        for (la = 0; la < spectrum.Nspect; la++) {
+          for (mu = 0; mu < atmos.Nrays; mu++) {
+            for (to_obs = 0; to_obs <= 1; to_obs++) {
+              for (k = 0; k < atmos.Nspace; k++) {
+
+                lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) +
+                        mu * (2 * atmos.Nspace) + to_obs * (atmos.Nspace) + k;
+
+                ncoef = spectrum.nc[lamuk];
+                if (lamuk == 0) {
+                  spectrum.nc[lamuk] = ncoef;
+                } else {
+                  spectrum.nc[lamuk] = spectrum.nc[lamuk - 1] + ncoef;
+                }
+              }
+            }
+          }
+        }
+      }
       /* --- now we know the number of interpolation coefficients,
              it's stored in the last element of spectrum.nc,
              so allocate space                                     --- */
       idx = spectrum.nc[2 * atmos.Nrays * spectrum.Nspect * atmos.Nspace - 1];
-      spectrum.iprdh = (int *)malloc(idx * sizeof(int));
-      spectrum.cprdh = (double *)malloc(idx * sizeof(double));
+      if (!spectrum.iprdh)
+      {
+        spectrum.iprdh = (int *)malloc(idx * sizeof(int));
+        spectrum.cprdh = (double *)malloc(idx * sizeof(double));
+      }
+      else
+      {
+        memset(spectrum.iprdh, 0, idx * sizeof(int));
+        memset(spectrum.cprdh, 0, idx * sizeof(double));
+      }
+      
 
       /* --- Run through all lamuk points again, and now store indices
              to lambda array and the corresponding interpolation
              coefficients                                          --- */
+      if (FALSE) {
       for (la = 0; la < spectrum.Nspect; la++) {
         for (mu = 0; mu < atmos.Nrays; mu++) {
           for (to_obs = 0; to_obs <= 1; to_obs++) {
@@ -320,9 +982,120 @@ void initSolution(Atom *atom, Molecule *molecule) {
           }   // to_obs
         }     // mu
       }       // la
+      } else {
+        if (input.Nthreads > 1) {
+          if (FALSE)
+          {
+          laIdxs = (LaRange*)malloc(input.Nthreads * sizeof(LaRange));
+          threadIds = (pthread_t*)malloc(input.Nthreads * sizeof(pthread_t));
 
+          for (la = 0; la < spectrum.Nspect; la += input.Nthreads * input.workSize) {
+
+            if (la + input.Nthreads * input.workSize <= spectrum.Nspect) {
+              Nthreads = input.Nthreads;
+            } else {
+              Nthreads = (spectrum.Nspect - la) / input.workSize;
+              if (((spectrum.Nspect - la) % input.workSize) != 0) {
+                // Handle remaining odd-sized batch
+                Nthreads += 1;
+              }
+            }
+            for (nt = 0; nt < Nthreads; ++nt) {
+              laIdxs[nt].start = la + nt * input.workSize;
+              laIdxs[nt].end = la + (nt + 1) * input.workSize;
+            }
+            if (laIdxs[Nthreads-1].end > spectrum.Nspect) {
+              laIdxs[Nthreads-1].end = spectrum.Nspect;
+            }
+            for (nt = 0; nt < Nthreads; ++nt) {
+              pthread_create(&threadIds[nt], &input.thread_attr, prdh_coeffs_pthread, &laIdxs[nt]);
+            }
+
+            for (nt = 0; nt < Nthreads; ++nt) {
+              pthread_join(threadIds[nt], NULL);
+            }
+          }
+          free(laIdxs);
+          free(threadIds);
+          }
+          else
+          {
+            struct sched_task task;
+            scheduler_add(&input.sched, &task, prdh_coeffs_sched_new, &bounds, spectrum.Nspect, input.workSize);
+            scheduler_join(&input.sched, &task);
+            // CMO_PROF_REGION_START("OLD");
+            // struct sched_task task;
+            // scheduler_add(&input.sched, &task, prdh_coeffs_sched, NULL, spectrum.Nspect, 192);
+            // scheduler_join(&input.sched, &task);
+            // CMO_PROF_REGION_END("OLD");
+          }
+        } else {
+          for (la = 0; la < spectrum.Nspect; la++) {
+            prdh_interp_coeffs(la);
+          }
+        }
+      }
+      // int* oldIprdh = spectrum.iprdh;
+      // double* oldCprdh = spectrum.cprdh;
+      // idx = spectrum.nc[2 * atmos.Nrays * spectrum.Nspect * atmos.Nspace - 1];
+      // spectrum.iprdh = (int *)malloc(idx * sizeof(int));
+      // spectrum.cprdh = (double *)malloc(idx * sizeof(double));
+
+      // CMO_PROF_REGION_START("NEW");
+      // {
+      //   struct sched_task task;
+      //   scheduler_add(&input.sched, &task, prdh_coeffs_sched_new, &bounds, spectrum.Nspect, 192);
+      //   scheduler_join(&input.sched, &task);
+      // }
+      // CMO_PROF_REGION_END("NEW");
+      // for (la = 0; la < spectrum.Nspect; la++) {
+      //   for (mu = 0; mu < atmos.Nrays; mu++) {
+      //     for (to_obs = 0; to_obs <= 1; to_obs++) {
+      //       for (k = 0; k < atmos.Nspace; k++) {
+
+      //         lamuk = la * (atmos.Nrays * 2 * atmos.Nspace) +
+      //                 mu * (2 * atmos.Nspace) + to_obs * (atmos.Nspace) + k;
+      //         if (oldIprdh[lamuk] != spectrum.iprdh[lamuk])
+      //         {
+      //           printf("It's all gone to shit :(\n");
+      //           printf("Old: %d, New: %d, idx: %d\n", oldIprdh[lamuk], spectrum.iprdh[lamuk], lamuk);
+      //           assert(FALSE);
+      //         }
+      //         if (oldCprdh[lamuk] != spectrum.cprdh[lamuk])
+      //         {
+      //           printf("It's all gone to shit :(\n");
+      //           printf("Old: %e, New: %e, idx: %d\n", oldCprdh[lamuk], spectrum.cprdh[lamuk], lamuk);
+      //           assert(FALSE);
+      //         }
+      //       }
+      //     }
+      //   }
+      // }
+      // printf("All Good 2 :)\n");
+      // free (oldIprdh);
+      // free (oldCprdh);
+      free(bounds.lowerBracket1);
+      free(bounds.upperBracket1);
+      free(bounds.lowerBracket2);
+      free(bounds.upperBracket2);
     } // input.prdh_limit_mem if switch
   }   // PRD_ANGLE_APPROX if switch
+  else if (input.PRD_angle_dep == PRD_ANGLE_INDEP)
+  {
+    for (nact = 0; nact < atmos.Nactiveatom; nact++) {
+      atom = atmos.activeatoms[nact];
+      for (kr = 0; kr < atom->Nline; kr++) {
+        line = &atom->line[kr];
+        if (line->PRD) {
+          Nsr = MAX(3 * PRD_QWING, 2 * PRD_QSPREAD) / PRD_DQ + 1;
+          if (line->gII != NULL)
+            freeMatrix((void **)line->gII);
+          line->gII = matrix_double(atmos.Nspace * line->Nlambda, Nsr);
+          line->gII[0][0] = -1.0;
+        }
+      }
+    }
+  }
 
   /* --- Allocate space for the emergent intensity --  -------------- */
 
@@ -516,6 +1289,19 @@ void initSolution(Atom *atom, Molecule *molecule) {
     /* --- Allocate memory for the rate equation matrix -- ---------- */
 
     atom->Gamma = matrix_double(SQ(atom->Nlevel), atmos.Nspace);
+    if (input.Nthreads > 1)
+    {
+      for (int n = 0; n < input.Nthreads; ++n)
+      {
+        // CMO: WARNING: THESE ARE JUST LEAKED FOR NOW!
+        atom->rhacc[n].Gamma = matrix_double(SQ(atom->Nlevel), atmos.Nspace);
+        atom->rhacc[n].RjiLine = matrix_double(atom->Nline, atmos.Nspace);
+        atom->rhacc[n].RijLine = matrix_double(atom->Nline, atmos.Nspace);
+        atom->rhacc[n].RjiCont = matrix_double(atom->Ncont, atmos.Nspace);
+        atom->rhacc[n].RijCont = matrix_double(atom->Ncont, atmos.Nspace);
+        atom->rhacc[n].lineRatesDirty = calloc(atom->Nline, sizeof(bool_t));
+      }
+    }
 
     /* --- Initialize the mutex lock for the operator Gamma if there
            are more than one threads --                -------------- */
@@ -658,5 +1444,6 @@ void initSolution(Atom *atom, Molecule *molecule) {
       Error(ERROR_LEVEL_2, routineName, messageStr);
     }
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- initSolution.c ---------- */

@@ -38,6 +38,8 @@
 #include "inputs.h"
 #include "statistics.h"
 
+#include "CmoProfile.h"
+
 #define COMMENT_CHAR "#"
 #define MAX_ABUND_ERROR 0.001
 
@@ -199,6 +201,8 @@ void readAtom(Atom *atom, bool_t active) {
     line->atom = atom;
     line->isotope_frac = 1.0;
 
+    line->nLine = kr;
+
     getLineString(&atom_string, COMMENT_CHAR, inputLine, exit_on_EOF = TRUE);
     Nread = sscanf(inputLine,
                    "%d %d %lf %s %d %s %lf %lf %s %lf %lf %lf %lf %lf %lf %lf",
@@ -352,6 +356,7 @@ void readAtom(Atom *atom, bool_t active) {
     initAtomicContinuum(continuum);
     continuum->atom = atom;
     continuum->isotope_frac = 1.0;
+    continuum->nCont = kr;
 
     getLineString(&atom_string, COMMENT_CHAR, inputLine, exit_on_EOF = TRUE);
     Nread = sscanf(inputLine, "%d %d %lf %d %s %lf", &j, &i, &continuum->alpha0,
@@ -548,6 +553,12 @@ void readAtom(Atom *atom, bool_t active) {
     /* --- Allocate space for thread dependent quantities -- -------- */
 
     atom->rhth = (rhthread *)malloc(input.Nthreads * sizeof(rhthread));
+    atom->rhacc = (RhAccumulate *)malloc(input.Nthreads * sizeof(RhAccumulate));
+    // for (int n = 0; n < input.Nthreads; ++n)
+    // {
+
+    // }
+
 
     /* --- Store the offset to allow pointing back to the start of the
            collisional data in the atomic input file, and allocate
@@ -712,6 +723,20 @@ void freeAtom(Atom *atom) {
   if (atom->Gamma != NULL)
     freeMatrix((void **)atom->Gamma);
 
+  if (atom->rhacc != NULL)
+  {
+    for (int n = 0; n < input.Nthreads; ++n)
+    {
+      freeMatrix((void **)atom->rhacc[n].Gamma);
+      freeMatrix((void **)atom->rhacc[n].RijLine);
+      freeMatrix((void **)atom->rhacc[n].RjiLine);
+      freeMatrix((void **)atom->rhacc[n].RijCont);
+      freeMatrix((void **)atom->rhacc[n].RjiCont);
+      free(atom->rhacc[n].lineRatesDirty);
+    }
+    free(atom->rhacc);
+  }
+
   if (atom->line != NULL) {
     for (kr = 0; kr < atom->Nline; kr++)
       freeAtomicLine(atom->line + kr);
@@ -802,6 +827,8 @@ void readAtomicModels(void) {
   char *fp_atoms;
   Atom *atom;
   Element *element;
+
+  CMO_PROF_FUNC_START();
 
   getCPU(2, TIME_START, NULL);
 
@@ -907,6 +934,7 @@ void readAtomicModels(void) {
 
   distribute_nH();
   getCPU(2, TIME_POLL, "Read atomic input");
+  CMO_PROF_FUNC_END();
 }
 
 /* ------- end ---------------------------- readAtomicModels.c ------ */

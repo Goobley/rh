@@ -48,6 +48,8 @@
 #include "statistics.h"
 #include "error.h"
 
+#include "CmoProfile.h"
+
 /* --- Function prototypes --                          -------------- */
 
 void freeZeeman(ZeemanMultiplet *zm);
@@ -66,13 +68,13 @@ void Profile(AtomicLine *line) {
 
   char filename[MAX_LINE_SIZE];
   int lamu, Nlamu, NrecStokes;
-  double *adamp = NULL, **v, **v_los, *vB, *sv, *vbroad, Larmor, H, F, wlamu,
+  double *adamp = NULL, **v = NULL, **v_los = NULL, *vB = NULL, *sv = NULL, *vbroad = NULL, Larmor, H, F, wlamu,
          vk, phi_pi, phi_sm, phi_sp, phi_delta, phi_sigma, psi_pi, psi_sm,
-         psi_sp, psi_delta, psi_sigma, sign, sin2_gamma, *phi, *phi_Q, *phi_U,
-         *phi_V, *psi_Q, *psi_U, *psi_V;
+         psi_sp, psi_delta, psi_sigma, sign, sin2_gamma, *phi = NULL, *phi_Q = NULL, *phi_U = NULL,
+         *phi_V = NULL, *psi_Q = NULL, *psi_U = NULL, *psi_V = NULL;
 
   Atom *atom = line->atom;
-  ZeemanMultiplet *zm;
+  ZeemanMultiplet *zm = NULL;
 
   if (!line->Voigt) {
     sprintf(messageStr,
@@ -363,8 +365,9 @@ void Profile(AtomicLine *line) {
   if (input.limit_memory)
     free(phi);
 
-  if (line->polarizable && (input.StokesMode > FIELD_FREE)) {
-    freeZeeman(zm);
+  if (atmos.moving || (line->polarizable && (input.StokesMode > FIELD_FREE))) {
+    if (zm)
+      freeZeeman(zm);
     free(zm);
     free(vB);
     free(sv);
@@ -477,6 +480,17 @@ void MolecularProfile(MolecularLine *mrt) {
 
 /* ------- begin -------------------------- getProfiles.c ----------- */
 
+static void atomic_profiles_sched(void* userdata, struct scheduler *s, struct sched_task_partition range, sched_uint threadId)
+{
+  CMO_PROF_FUNC_START();
+  AtomicLine** lines = (AtomicLine**)userdata;
+  for (int i = range.start; i < range.end; ++i)
+  {
+    Profile(lines[i]);
+  }
+  CMO_PROF_FUNC_END();
+}
+
 void getProfiles(void) {
   register int nact, kr;
 
@@ -488,8 +502,11 @@ void getProfiles(void) {
   /* --- Calculate profiles for Non-LTE after all necessary ingredients
          like Hydrogen poulation fro broadening are available -- ---- */
 
+  CMO_PROF_FUNC_START();
   getCPU(2, TIME_START, NULL);
 
+  if (FALSE)
+  {
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     atom = atmos.activeatoms[nact];
     for (kr = 0; kr < atom->Nline; kr++) {
@@ -497,6 +514,29 @@ void getProfiles(void) {
       Profile(line);
     }
   }
+  }
+  else
+  {
+    int numLines = 0;
+    for (nact = 0; nact < atmos.Nactiveatom; ++nact)
+    {
+      numLines += atmos.activeatoms[nact]->Nline;
+    }
+    AtomicLine* lines[numLines];
+    numLines = 0;
+    for (nact = 0; nact < atmos.Nactiveatom; ++nact)
+    {
+      atom = atmos.activeatoms[nact];
+      for (kr = 0; kr < atom->Nline; ++kr)
+      {
+        lines[numLines++] = &atom->line[kr];
+      }
+    }
+    struct sched_task task;
+    scheduler_add(&input.sched, &task, atomic_profiles_sched, lines, numLines, 1);
+    scheduler_join(&input.sched, &task);
+  }
+  
 
   for (nact = 0; nact < atmos.Nactivemol; nact++) {
     molecule = atmos.activemols[nact];
@@ -507,5 +547,6 @@ void getProfiles(void) {
   }
 
   getCPU(2, TIME_POLL, "Profiles");
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- getProfiles.c ----------- */

@@ -28,10 +28,13 @@
 #include "statistics.h"
 #include "xdr.h"
 
+#include "CmoProfile.h"
+
 #define MULTI_COMMENT_CHAR "*"
 #define N_HYDROGEN_MULTI 6
 
 /* --- Function prototypes --                          -------------- */
+void cmo_load_background(int nspect, int mu, bool_t to_obs);
 
 /* --- Global variables --                             -------------- */
 
@@ -50,6 +53,8 @@ void MULTIatmos(Atmosphere *atmos, Geometry *geometry) {
   int Nread, Ndep, Nrequired, checkPoint;
   double *dscale, turbpress, turbelecpress, nbaryon, meanweight;
   struct stat statBuffer;
+
+  CMO_PROF_FUNC_START();
 
   getCPU(2, TIME_START, NULL);
 
@@ -234,6 +239,7 @@ void MULTIatmos(Atmosphere *atmos, Geometry *geometry) {
   }
 
   getCPU(2, TIME_POLL, "Read Atmosphere");
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- MULTIatmos.c ------------ */
 
@@ -246,6 +252,8 @@ void convertScales(Atmosphere *atmos, Geometry *geometry) {
   int ref_index, Ndep = geometry->Ndep;
   double *rho, *height, *cmass, *tau_ref, h_zero, unity;
   ActiveSet *as;
+
+  CMO_PROF_FUNC_START();
 
   /* --- Convert between different depth scales --       ------------ */
 
@@ -262,8 +270,16 @@ void convertScales(Atmosphere *atmos, Geometry *geometry) {
   Locate(spectrum.Nspect, spectrum.lambda, atmos->lambda_ref, &ref_index);
 
   as = &spectrum.as[ref_index];
-  alloc_as(ref_index, FALSE);
-  readBackground(ref_index, 0, 0);
+  alloc_as(ref_index, FALSE, -1);
+  if (input.backgr_in_mem)
+  {
+    cmo_load_background(ref_index, 0, 0);
+  }
+  else
+  {
+    readBackground(ref_index, 0, 0);
+  }
+  
 
   /* --- Convert to missing depth scales --              ------------ */
 
@@ -302,7 +318,7 @@ void convertScales(Atmosphere *atmos, Geometry *geometry) {
     }
     break;
   }
-  free_as(ref_index, FALSE);
+  free_as(ref_index, FALSE, -1);
 
   if ((geometry->scale == COLUMN_MASS) || (geometry->scale == TAU500)) {
     unity = 1.0;
@@ -312,6 +328,7 @@ void convertScales(Atmosphere *atmos, Geometry *geometry) {
   }
 
   free(rho);
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- convertScales.c --------- */
 

@@ -108,18 +108,21 @@ bool_t xdr_BRS(XDR *xdrs) {
     /* --- Flags for presence of background line --    -------------- */
 
     for (nspect = 0; nspect < spectrum.Nspect; nspect++)
-      hasline[nspect] = atmos.backgrflags[nspect].hasline;
+      // hasline[nspect] = atmos.backgrflags[nspect].hasline;
+      hasline[nspect] = (atmos.backgrflags[nspect] & HAS_LINE);
     result &= xdr_vector(xdrs, (char *)hasline, spectrum.Nspect, sizeof(bool_t),
                          (xdrproc_t)xdr_bool);
 
     /* --- Flags for presence of polarized background -- ------------ */
 
     for (nspect = 0; nspect < spectrum.Nspect; nspect++)
-      ispolarized[nspect] = atmos.backgrflags[nspect].ispolarized;
+      // ispolarized[nspect] = atmos.backgrflags[nspect].ispolarized;
+      ispolarized[nspect] = (atmos.backgrflags[nspect] & IS_POLARIZED);
     result &= xdr_vector(xdrs, (char *)ispolarized, spectrum.Nspect,
                          sizeof(bool_t), (xdrproc_t)xdr_bool);
   } else {
-    atmos.backgrflags = (flags *)malloc(spectrum.Nspect * sizeof(flags));
+    // atmos.backgrflags = (flags *)malloc(spectrum.Nspect * sizeof(flags));
+    atmos.backgrflags = (flags *)calloc(spectrum.Nspect, sizeof(flags));
     atmos.backgrrecno = (long *)malloc(Nrecno * sizeof(long));
 
     result &= xdr_counted_string(xdrs, &atmosID);
@@ -142,14 +145,34 @@ bool_t xdr_BRS(XDR *xdrs) {
     result &= xdr_vector(xdrs, (char *)hasline, spectrum.Nspect, sizeof(bool_t),
                          (xdrproc_t)xdr_bool);
     for (nspect = 0; nspect < spectrum.Nspect; nspect++)
-      atmos.backgrflags[nspect].hasline = hasline[nspect];
+    {
+      // atmos.backgrflags[nspect].hasline = hasline[nspect];
+      if (hasline[nspect])
+      {
+        atmos.backgrflags[nspect] |= HAS_LINE;
+      }
+      else
+      {
+        atmos.backgrflags[nspect] &= ~HAS_LINE;
+      }
+    }
 
     /* --- Flags for presence of polarized background -- ------------ */
 
     result &= xdr_vector(xdrs, (char *)ispolarized, spectrum.Nspect,
                          sizeof(bool_t), (xdrproc_t)xdr_bool);
     for (nspect = 0; nspect < spectrum.Nspect; nspect++)
-      atmos.backgrflags[nspect].ispolarized = ispolarized[nspect];
+    {
+      // atmos.backgrflags[nspect].ispolarized = ispolarized[nspect];
+      if (ispolarized[nspect])
+      {
+        atmos.backgrflags[nspect] |= IS_POLARIZED;
+      }
+      else
+      {
+        atmos.backgrflags[nspect] &= ~IS_POLARIZED;
+      }
+    }
   }
 
   result &= xdr_vector(xdrs, (char *)atmos.backgrrecno, Nrecno, sizeof(int),

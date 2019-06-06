@@ -40,6 +40,8 @@
 #include "spectrum.h"
 #include "inputs.h"
 #include "constant.h"
+#define CMO_NO_PROF
+#include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
 
@@ -56,7 +58,7 @@ extern char messageStr[];
 
 /* ------- begin -------------------------- Opacity.c --------------- */
 
-void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize) {
+void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize, int threadId) {
   const char routineName[] = "Opacity";
   register int k, n, nact;
 
@@ -76,6 +78,8 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize) {
   MolecularLine *mrt;
   ActiveSet *as;
 
+  CMO_PROF_FUNC_START();
+
   rho_tmp = (double *)calloc(spectrum.Nspect, sizeof(double));
 
   /* --- Some useful constants --                          ---------- */
@@ -87,7 +91,19 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize) {
   hc_k = hc / (KBOLTZMANN * NM_TO_M);
 
   as = &spectrum.as[nspect];
-  nt = nspect % input.Nthreads;
+
+  nt = threadId;
+  if (threadId == -1)
+  {
+    nt = (nspect / input.workSize) % input.Nthreads;
+  }
+  // if (input.Nthreads > 1)
+  // {
+  //   nt = (nspect / input.workSize) % input.Nthreads;
+  // } else {
+  //   nt = nspect % input.Nthreads;
+  // }
+  // nt = nspect % input.Nthreads;
 
   /* --- If polarized transition is present and we solve for polarized
          radiation we need to fill all four Stokes components -- ---- */
@@ -432,12 +448,13 @@ void Opacity(int nspect, int mu, bool_t to_obs, bool_t initialize) {
   }
 
   free(rho_tmp);
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- Opacity.c --------------- */
 
 /* ------- begin -------------------------- alloc_as.c -------------- */
 
-void alloc_as(int nspect, bool_t crosscoupling) {
+void alloc_as(int nspect, bool_t crosscoupling, int threadId) {
   register int n, m, nact;
 
   int i, j, NrecStokes, NrecStokes_as, Nactive, nt;
@@ -445,23 +462,41 @@ void alloc_as(int nspect, bool_t crosscoupling) {
   Molecule *molecule;
   ActiveSet *as;
 
+  CMO_PROF_FUNC_START(); 
+
   as = &spectrum.as[nspect];
-  nt = nspect % input.Nthreads;
+  nt = threadId;
+  if (threadId == -1)
+  {
+    nt = (nspect / input.workSize) % input.Nthreads;
+  }
+  // if (input.Nthreads > 1)
+  // {
+  //   nt = (nspect / input.workSize) % input.Nthreads;
+  // } else {
+  //   nt = nspect % input.Nthreads;
+  // }
+  // nt = nspect % input.Nthreads;
 
   /* --- Allocate space for background opacities and emissivity -- -- */
 
-  if (atmos.backgrflags[nspect].ispolarized &&
+  // if (atmos.backgrflags[nspect].ispolarized &&
+  if ((atmos.backgrflags[nspect] & IS_POLARIZED) &&
       input.StokesMode == FULL_STOKES) {
     NrecStokes = 4;
 
-    if (input.magneto_optical)
+    if (input.magneto_optical && !input.backgr_in_mem)
       as->chip_c = (double *)malloc(3 * atmos.Nspace * sizeof(double));
   } else
     NrecStokes = 1;
 
-  as->chi_c = (double *)malloc(NrecStokes * atmos.Nspace * sizeof(double));
-  as->eta_c = (double *)malloc(NrecStokes * atmos.Nspace * sizeof(double));
-  as->sca_c = (double *)malloc(atmos.Nspace * sizeof(double));
+  if (!input.backgr_in_mem)
+  {
+    as->chi_c = (double *)malloc(NrecStokes * atmos.Nspace * sizeof(double));
+    as->eta_c = (double *)malloc(NrecStokes * atmos.Nspace * sizeof(double));
+    as->sca_c = (double *)malloc(atmos.Nspace * sizeof(double));
+  }
+  
 
   /* --- Now for the active part --                    -------------- */
 
@@ -530,12 +565,13 @@ void alloc_as(int nspect, bool_t crosscoupling) {
           matrix_double(as->Nactivemolrt[nact], atmos.Nspace);
     }
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- alloc_as.c -------------- */
 
 /* ------- begin -------------------------- free_as.c --------------- */
 
-void free_as(int nspect, bool_t crosscoupling) {
+void free_as(int nspect, bool_t crosscoupling, int threadId) {
   register int nact, n, m;
 
   int i, j, nt;
@@ -543,19 +579,52 @@ void free_as(int nspect, bool_t crosscoupling) {
   Molecule *molecule;
   ActiveSet *as;
 
-  as = &spectrum.as[nspect];
-  nt = nspect % input.Nthreads;
+  CMO_PROF_FUNC_START();
 
-  free(as->chi_c);
-  free(as->eta_c);
-  free(as->sca_c);
+  as = &spectrum.as[nspect];
+  nt = threadId;
+  if (threadId == -1)
+  {
+    nt = (nspect / input.workSize) % input.Nthreads;
+  }
+  // if (input.Nthreads > 1)
+  // {
+  //   nt = (nspect / input.workSize) % input.Nthreads;
+  // } else {
+  //   nt = nspect % input.Nthreads;
+  // }
+  // nt = nspect % input.Nthreads;
+
+  if (!input.backgr_in_mem)
+  {
+    free(as->chi_c);
+    free(as->eta_c);
+    free(as->sca_c);
+  }
+  else
+  {
+    as->chi_c = NULL;
+    as->eta_c = NULL;
+    as->sca_c = NULL;
+  }
+  
 
   free(as->chi);
   free(as->eta);
 
   if (input.StokesMode == FULL_STOKES && input.magneto_optical) {
-    if (atmos.backgrflags[nspect].ispolarized)
-      free(as->chip_c);
+    // if (atmos.backgrflags[nspect].ispolarized)
+    if ((atmos.backgrflags[nspect] & IS_POLARIZED))
+    {
+      if (!input.backgr_in_mem)
+      {
+        free(as->chip_c);
+      }
+      else
+      {
+        as->chip_c = NULL;
+      }
+    }
     if (containsPolarized(as))
       free(as->chip);
   }
@@ -601,6 +670,7 @@ void free_as(int nspect, bool_t crosscoupling) {
       freeMatrix((void **)molecule->rhth[nt].wla);
     }
   }
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- free_as.c --------------- */
 
@@ -766,8 +836,9 @@ flags MolecularOpacity(double lambda, int nspect, int mu, bool_t to_obs,
   MolecularLine *mrt;
   flags backgrflags;
 
-  backgrflags.hasline = FALSE;
-  backgrflags.ispolarized = FALSE;
+  // backgrflags.hasline = FALSE;
+  // backgrflags.ispolarized = FALSE;
+  backgrflags = 0;
 
   hc = HPLANCK * CLIGHT;
   fourPI = 4.0 * PI;
@@ -827,9 +898,11 @@ flags MolecularOpacity(double lambda, int nspect, int mu, bool_t to_obs,
             Bijhc_4PI = hc_4PI * mrt->Bij * mrt->isotope_frac * mrt->gi;
             twohnu3_c2 = mrt->Aji / mrt->Bji;
 
-            backgrflags.hasline = TRUE;
+            // backgrflags.hasline = TRUE;
+            backgrflags |= HAS_LINE;
             if (mrt->polarizable) {
-              backgrflags.ispolarized = TRUE;
+              // backgrflags.ispolarized = TRUE;
+              backgrflags |= IS_POLARIZED;
               if (mrt->zm == NULL)
                 mrt->zm = MolZeeman(mrt);
             }

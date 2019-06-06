@@ -23,6 +23,7 @@
 #include "error.h"
 #include "statistics.h"
 #include "xdr.h"
+#include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
 
@@ -53,6 +54,7 @@ void SortLambda() {
   XDR xdrs;
 
   getCPU(2, TIME_START, NULL);
+  CMO_PROF_FUNC_START();
 
   /* --- First read the wavelength table if specified -- ------------ */
 
@@ -521,5 +523,6 @@ void SortLambda() {
     }
   }
   getCPU(2, TIME_POLL, "SortLambda");
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- SortLambda.c ------------ */

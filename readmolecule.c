@@ -30,6 +30,8 @@
 #include "inputs.h"
 #include "statistics.h"
 
+#include "CmoProfile.h"
+
 #define COMMENT_CHAR "#"
 #define N_MAX_CONFIG 10
 
@@ -1069,6 +1071,7 @@ void readMolecularModels(void) {
   Molecule *molecule;
   Element *element;
 
+  CMO_PROF_FUNC_START();
   getCPU(2, TIME_START, NULL);
 
   /* --- Open input file for molecular models --       -------------- */
@@ -1190,6 +1193,7 @@ void readMolecularModels(void) {
   atmos.nHmin = (double *)malloc(atmos.Nspace * sizeof(double));
 
   getCPU(2, TIME_POLL, "Read molecular input");
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- readMolecularModels.c --- */
 

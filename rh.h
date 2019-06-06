@@ -93,6 +93,17 @@ double **matrix_double(int Nrow, int Ncol);
 void freeMatrix(void **Matrix);
 void SolveLinearEq(int N, double **A, double *b, bool_t improve);
 
+typedef struct SplineState
+{
+  bool_t ascend;
+  int Ntable;
+  double* xtable;
+  double xmin, xmax;
+  double* M;
+  double* u;
+  double* ytable;
+} SplineState;
+
 /* --- Interpolation routines --                       -------------- */
 
 int qsascend(const void *v1, const void *v2);
@@ -106,6 +117,12 @@ void Linear(int Ntable, double *xtable, double *ytable, int N, double *x,
 double BiLinear(int Na, double *a_table, double a, int Nb, double *b_table,
                 double b, double **f, bool_t hunt);
 
+void init_SplineState(SplineState* s);
+void free_SplineState(SplineState* s);
+void spline_coef_stateless(SplineState* s, int Ntable,
+                           double *xtable, double *ytable);
+void spline_eval_stateless(SplineState* s, int N,
+                           double *x, double *y, bool_t hunt);
 void splineCoef(int Ntable, double *xtable, double *ytable);
 void splineEval(int N, double *x, double *y, bool_t hunt);
 void exp_splineCoef(int Ntable, double *xtable, double *ytable, double tension);

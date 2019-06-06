@@ -77,7 +77,7 @@ void writeOpacity(void) {
     as = &spectrum.as[nspect];
 
     if (containsActive(as)) {
-      alloc_as(nspect, crosscoupling = FALSE);
+      alloc_as(nspect, crosscoupling = FALSE, -1);
 
       /* --- Check whether current active set includes a bound-bound
              and/or polarized transition and/or angledependent PRD
@@ -94,7 +94,7 @@ void writeOpacity(void) {
       if (polarized || PRD_angle_dep || (atmos.moving && boundbound)) {
         for (mu = 0; mu < atmos.Nrays; mu++) {
           initialize = (mu == 0);
-          Opacity(nspect, mu, to_obs = TRUE, initialize);
+          Opacity(nspect, mu, to_obs = TRUE, initialize, -1);
           result &= xdr_vector(&xdrs, (char *)as->chi, Nspace, sizeof(double),
                                (xdrproc_t)xdr_double);
           result &= xdr_vector(&xdrs, (char *)as->eta, Nspace, sizeof(double),
@@ -102,7 +102,7 @@ void writeOpacity(void) {
           as_rn[nspect * atmos.Nrays + mu] = ++record;
         }
       } else {
-        Opacity(nspect, 0, to_obs = TRUE, initialize = TRUE);
+        Opacity(nspect, 0, to_obs = TRUE, initialize = TRUE, -1);
         result &= xdr_vector(&xdrs, (char *)as->chi, Nspace, sizeof(double),
                              (xdrproc_t)xdr_double);
         result &= xdr_vector(&xdrs, (char *)as->eta, Nspace, sizeof(double),
@@ -115,7 +115,7 @@ void writeOpacity(void) {
         } else
           as_rn[nspect] = ++record;
       }
-      free_as(nspect, crosscoupling = FALSE);
+      free_as(nspect, crosscoupling = FALSE, -1);
     } else {
       if (atmos.moving || atmos.Stokes ||
           (atmos.NPRDactive > 0 && input.PRD_angle_dep != PRD_ANGLE_INDEP))

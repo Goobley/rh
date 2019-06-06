@@ -52,7 +52,6 @@
 #include "background.h"
 #include "inputs.h"
 
-#define N_MAX_OVERLAP 10
 
 /* --- Function prototypes --                          -------------- */
 
@@ -63,6 +62,87 @@ extern char messageStr[];
 extern InputData input;
 
 /* ------- begin -------------------------- Metal_bf.c -------------- */
+
+bool_t cmo_Metal_bf(SplineState* s, double lambda, int Nmetal, 
+                    struct Atom *metals, double *chi, double *eta) {
+  register int m, k, kr;
+
+  bool_t hunt;
+  int i, j, Z;
+  double lambdaEdge, alpha_la, twohnu3_c2, twohc, gijk, hc_k, hc_kla, **n,
+      *expla = NULL, n_eff, gbf_0;
+  Atom *metal;
+  AtomicContinuum *continuum;
+
+  twohc = (2.0 * HPLANCK * CLIGHT) / CUBE(NM_TO_M);
+  hc_k = (HPLANCK * CLIGHT) / (KBOLTZMANN * NM_TO_M);
+  for (k = 0; k < atmos.Nspace; k++) {
+    chi[k] = 0.0;
+    eta[k] = 0.0;
+  }
+
+  /* --- Go through the bound-free transitions of the metals and add
+         the opacity and emissivity for each transition for which the
+         current wavelength falls below treshold and above the
+         minimum wavelength --                         -------------- */
+
+  for (m = 0, metal = metals; m < Nmetal; m++, metal++) {
+    if (!metal->active) {
+
+      /* --- Use LTE or NonLTE population numbers ? -- -------------- */
+
+      n = (metal->n != metal->nstar) ? metal->n : metal->nstar;
+
+      for (kr = 0; kr < metal->Ncont; kr++) {
+        continuum = metal->continuum + kr;
+        i = continuum->i;
+        j = continuum->j;
+        lambdaEdge = continuum->lambda0;
+
+        if (lambda <= lambdaEdge && lambda >= continuum->lambda[0]) {
+          hc_kla = hc_k / lambda;
+          twohnu3_c2 = twohc / CUBE(lambda);
+
+          /* --- Evaluate the exponential only once at wavelength lambda,
+             not for each transition seperately -- ------------ */
+
+          if (expla == NULL) {
+            expla = (double *)malloc(atmos.Nspace * sizeof(double));
+            for (k = 0; k < atmos.Nspace; k++)
+              expla[k] = exp(-hc_kla / atmos.T[k]);
+          }
+
+          if (continuum->hydrogenic) {
+            Z = metal->stage[continuum->j];
+            n_eff = Z * sqrt(E_RYDBERG /
+                             (metal->E[continuum->j] - metal->E[continuum->i]));
+            gbf_0 = Gaunt_bf(continuum->lambda0, n_eff, Z);
+
+            alpha_la = continuum->alpha0 * CUBE(lambda / continuum->lambda0) *
+                       Gaunt_bf(lambda, n_eff, Z) / gbf_0;
+          } else {
+            spline_coef_stateless(s, continuum->Nlambda, 
+                                  continuum->lambda, continuum->alpha);
+            spline_eval_stateless(s, 1, &lambda, &alpha_la, hunt = FALSE);
+          }
+
+          for (k = 0; k < atmos.Nspace; k++) {
+            gijk = metal->nstar[i][k] / metal->nstar[j][k] * expla[k];
+            chi[k] += alpha_la * (1.0 - expla[k]) * n[i][k];
+            eta[k] += twohnu3_c2 * gijk * alpha_la * n[j][k];
+          }
+        }
+      }
+    }
+  }
+  if (expla != NULL) {
+    free(expla);
+    return TRUE;
+  } else
+    return FALSE;
+}
+
+
 
 bool_t Metal_bf(double lambda, int Nmetal, struct Atom *metals, double *chi,
                 double *eta) {
@@ -143,8 +223,223 @@ bool_t Metal_bf(double lambda, int Nmetal, struct Atom *metals, double *chi,
 }
 /* ------- end ---------------------------- Metal_bf.c -------------- */
 
-/* ------- begin -------------------------- passive_bb.c ------------ */
+// typedef struct CmoLineList {
+//   bool_t used;
+//   double *adamp;
+//   // AtomicLine line;
+//   AtomicLine* line;
+// } CmoLineList;
 
+// typedef struct PassiveBbState
+// {
+//   bool_t initialize;
+//   int Nlist;
+//   struct Linelist lineList[N_MAX_OVERLAP];
+// } PassiveBbState;
+
+void init_PassiveBbState(PassiveBbState* s)
+{
+  s->initialize = FALSE;
+  s->Nlist = 0;
+  for (int l = 0; l < BACKGROUND_MAX_OVERLAP; ++l)
+  {
+    s->lineList[l].line = NULL;
+    s->lineList[l].adamp = NULL;
+    s->lineList[l].used = FALSE;
+  }
+}
+
+void free_PassiveBbState(PassiveBbState* s)
+{
+  for (int l = 0; l < BACKGROUND_MAX_OVERLAP; ++l)
+  {
+    if (s->lineList[l].adamp)
+      free(s->lineList[l].adamp);
+  }
+}
+
+flags passive_bb_stateless(PassiveBbState* s, double lambda, int nspect, int mu, 
+                           bool_t to_obs, double* chi, double* eta, double* chip)
+{
+  flags result = 0;
+
+  const double hc = HPLANCK * CLIGHT;
+  const double hc_4pi = hc / (4.0 * PI);
+
+  // Clear chi/eta
+  if (atmos.Stokes)
+  {
+    for (int k = 0; k < 4 * atmos.Nspace; ++k)
+    {
+      chi[k] = 0.0;
+      eta[k] = 0.0;
+    }
+    if (input.magneto_optical)
+    {
+      for (int k = 0; k < 3 * atmos.Nspace; ++k)
+      {
+        chip[k] = 0.0;
+      }
+    }
+  }
+  else
+  {
+    for (int k = 0; k < atmos.Nspace; ++k)
+    {
+      chi[k] = 0.0;
+      eta[k] = 0.0;
+    }
+  }
+
+  // Reset used lines
+  for (int l = 0; l < s->Nlist; ++l)
+  {
+    s->lineList[l].used = FALSE;
+  }
+  
+  /* --- Go through the bound-bound transitions, First hydrogen, then
+         the metals, and add the opacity and emissivity for each
+         transition for which the current wavelength falls within the
+         limits of the line. --                        -------------- */
+  for (int m = 0; m < atmos.Natom; ++m)
+  {
+    Atom* atom = &atmos.atoms[m];
+    if (!atom->active)
+    {
+      /* --- Use LTE or NonLTE population numbers ? -- -------------- */
+      double** n = (atom->n != atom->nstar) ? atom->n : atom->nstar;
+      for (int kr = 0; kr < atom->Nline; ++kr)
+      {
+        AtomicLine* line = atom->line + kr;
+        int i = line->i;
+        int j = line->j;
+        double dlambda = line->lambda0 * line->qwing * (atmos.vmicro_char / CLIGHT);
+
+        if (fabs(lambda - line->lambda0) <= dlambda)
+        {
+          result |= HAS_LINE;
+          atmos.backgrflags[nspect] |= HAS_LINE;
+
+          /* --- Add line to list if not yet present -- ----------- */
+          bool_t addToList = TRUE;
+          int entry = 0;
+          for (int l = 0; l < s->Nlist; ++l)
+          {
+            if (line == s->lineList[l].line)
+            {
+              addToList = FALSE;
+              entry = l;
+              break;
+            }
+          }
+          if (addToList)
+          {
+            if (s->Nlist == BACKGROUND_MAX_OVERLAP)
+            {
+              sprintf(messageStr, "TOO many overlapping transitions");
+              Error(ERROR_LEVEL_2, __func__, messageStr);
+            }
+            /* --- Create a new entry in the list -- -------------- */
+            entry = s->Nlist;
+            s->Nlist++;
+            struct Linelist* lineData = &s->lineList[entry];
+            lineData->line = line;
+
+            /* --- Calculate and store the line's damping parameter */
+            if (line->Voigt)
+            {
+              lineData->adamp = (double*)malloc(atmos.Nspace * sizeof(double));
+              Damping(lineData->line, lineData->adamp);
+            }
+            else
+            {
+              lineData->adamp = NULL;
+            }
+          }
+          struct Linelist* lineData = &s->lineList[entry];
+          lineData->used = TRUE;
+
+          double gij = line->Bji / line->Bij;
+          double twohnu3_c2 = line->Aji / line->Bji;
+
+          /* --- Evaluate absorption and emission coefficients -- - */
+          for (int nc = 0; nc < line->Ncomponent; ++nc)
+          {
+            for (int k = 0; k < atmos.Nspace; ++k)
+            {
+              double v = (lambda - line->lambda0 - line->c_shift[nc]) * 
+                         CLIGHT / (line->lambda0 * atom->vbroad[k]);
+              if (atmos.moving)
+              {
+                if (to_obs)
+                {
+                  v += vproject(k, mu) / atom->vbroad[k];
+                }
+                else
+                {
+                  v -= vproject(k, mu) / atom->vbroad[k];
+                }
+              }
+              double phi = 0.0;
+              if (line->Voigt)
+              {
+                phi = Voigt(lineData->adamp[k], v, NULL, ARMSTRONG) * line->c_fraction[nc];
+              }
+              else
+              {
+                phi = exp(-SQ(v));
+              }
+              
+              double Vij = hc_4pi * line->Bij * phi / (SQRTPI * atom->vbroad[k]);
+              chi[k] += Vij * (n[i][k] - gij * n[j][k]);
+              eta[k] += twohnu3_c2 * gij * Vij * n[j][k];
+            }
+          }
+        }
+      }
+    }
+  }
+  /* --- Remove lines from the line list that have not been used at this
+         wavelength, and sort list --                  -------------- */
+  for (int l = 0; l < s->Nlist; ++l)
+  {
+    if (!s->lineList[l].used)
+    {
+      if (s->lineList[l].adamp)
+      {
+        free(s->lineList[l].adamp);
+        s->lineList[l].adamp = NULL;
+      }
+    }
+  }
+  for (int l = 0; l < BACKGROUND_MAX_OVERLAP; ++l)
+  {
+    if (!s->lineList[l].used)
+    {
+      for (int m = l+1; m < BACKGROUND_MAX_OVERLAP; ++m)
+      {
+        if (s->lineList[m].used)
+        {
+          s->lineList[l] = s->lineList[m];
+          break;
+        }
+      }
+    }
+  }
+  s->Nlist = 0;
+  for (int l = 0; l < BACKGROUND_MAX_OVERLAP; ++l)
+  {
+    if (s->lineList[l].used)
+    {
+      ++s->Nlist;
+    }
+  }
+
+  return result;
+}
+
+/* ------- begin -------------------------- passive_bb.c ------------ */
+#define N_MAX_OVERLAP 10
 flags passive_bb(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
                  double *eta, double *chip) {
   const char routineName[] = "passive_bb";
@@ -170,8 +465,9 @@ flags passive_bb(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
          and angles.
          --                                            -------------- */
 
-  backgrflags.hasline = FALSE;
-  backgrflags.ispolarized = FALSE;
+  // backgrflags.hasline = FALSE;
+  // backgrflags.ispolarized = FALSE;
+  backgrflags = 0;
 
   if (initialize) {
     for (l = 0; l < N_MAX_OVERLAP; l++)
@@ -222,9 +518,10 @@ flags passive_bb(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
         dlambda = line->lambda0 * line->qwing * (atmos.vmicro_char / CLIGHT);
 
         if (fabs(lambda - line->lambda0) <= dlambda) {
-          backgrflags.hasline = TRUE;
-          atmos.backgrflags[nspect].hasline = TRUE;
-
+          // backgrflags.hasline = TRUE;
+          backgrflags |= HAS_LINE;
+          // atmos.backgrflags[nspect].hasline = TRUE;
+          atmos.backgrflags[nspect] |= HAS_LINE;
           /* --- Add line to list if not yet present -- ----------- */
 
           add_to_list = TRUE;

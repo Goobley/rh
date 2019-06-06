@@ -15,6 +15,8 @@
 #define MAX_KEYWORD_LENGTH 32
 #define MAX_VALUE_LENGTH 80
 
+#include "sched.h"
+
 #define CHECK_OPTION(option, name, length)                                     \
   (strncmp(option, name, MAX(((int)length), strlen(option))) == 0)
 
@@ -85,6 +87,8 @@ typedef struct {
   double p15d_tmax;
   bool_t p15d_wxtra, p15d_rerun, p15d_refine, p15d_zcut, p15d_wtau;
   bool_t p15d_wpop, p15d_wrates;
+  // cmo Work unit size for improved pthreading
+  int workSize;
   double iterLimit, PRDiterLimit, metallicity, *wavetable;
   unsigned int Nxwave;
   /* Tiago, for saving the input files */
@@ -94,6 +98,10 @@ typedef struct {
   char **kurucz_line_file_name;
   int Nkurucz_files;
   pthread_attr_t thread_attr;
+  struct scheduler sched;
+  void* schedMem;
+  // TODO(cmo): This shouldn't be in this struct, but it will do for now
+  SplineState* splineState;
 } InputData;
 
 /* --- Associated function prototypes --               -------------- */

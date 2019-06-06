@@ -203,6 +203,9 @@ void readInput(char *input_string) {
       {"N_PESC_ITER", "3", FALSE, KEYWORD_OPTIONAL, &input.NpescIter,
        setintValue},
 
+      {"WORK_SIZE", "1", FALSE, KEYWORD_OPTIONAL, &input.workSize,
+       setintValue},
+
       {"VTURB_MULTIPLIER", "1.0", FALSE, KEYWORD_OPTIONAL, &input.vturb_mult,
        setdoubleValue},
 

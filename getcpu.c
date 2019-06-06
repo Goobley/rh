@@ -52,7 +52,14 @@ extern CommandLine commandline;
 extern char messageStr[];
 
 /* ------- begin -------------------------- getTime.c --------------- */
+#if 1
+void getCPU(int level, enum CPUaction action, char* label)
+{
+}
 
+void printTotalCPU()
+{}
+#else
 void getCPU(int level, enum CPUaction action, char *label) {
   register int n;
 
@@ -129,3 +136,4 @@ void printTotalCPU() {
           100 * user / total, 100 * system / total);
 }
 /* ------- end ---------------------------- printTotalCPU ----------- */
+#endif

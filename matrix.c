@@ -91,6 +91,7 @@ float **matrix_float(int Nrow, int Ncol) {
 
   return Matrix;
 }
+
 /* ------- end ---------------------------- matrix_float.c --------- */
 
 /* ------- begin -------------------------- freeMatrix.c ------------ */

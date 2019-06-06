@@ -469,8 +469,9 @@ flags rlk_opacity(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
   /* --- Calculate the LTE opacity at wavelength lambda due to atomic
          transitions stored in atmos.rlk_lines --      -------------- */
 
-  backgrflags.hasline = FALSE;
-  backgrflags.ispolarized = FALSE;
+  // backgrflags.hasline = FALSE;
+  // backgrflags.ispolarized = FALSE;
+  backgrflags = 0;
 
   /* --- If wavelength outside our list return without calculation -- */
 
@@ -592,9 +593,11 @@ flags rlk_opacity(double lambda, int nspect, int mu, bool_t to_obs, double *chi,
         }
         /* --- Set flag that line is present at this wavelength -- -- */
 
-        backgrflags.hasline = TRUE;
+        // backgrflags.hasline = TRUE;
+        backgrflags |= HAS_LINE;
         if (rlk->polarizable) {
-          backgrflags.ispolarized = TRUE;
+          // backgrflags.ispolarized = TRUE;
+          backgrflags |= IS_POLARIZED;
           if (rlk->zm == NULL)
             rlk->zm = RLKZeeman(rlk);
         }

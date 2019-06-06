@@ -32,6 +32,9 @@
 
 extern char messageStr[];
 
+
+
+
 /* ------- begin -------------------------- duplicateLevel.c -------- */
 
 bool_t duplicateLevel(Atom *atom, char *label) {

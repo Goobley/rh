@@ -20,7 +20,7 @@
 
 /* --- Associated function prototypes --               -------------- */
 
-void convertJ(FILE *fp_J, int Nspect, enum xdr_op xdrOperation);
+// void convertJ(FILE *fp_J, int Nspect, enum xdr_op xdrOperation);
 bool_t readB(Atmosphere *atmos);
 bool_t writeFlux(char *fileName);
 bool_t writeMetals(char *fileName);

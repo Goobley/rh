@@ -14,6 +14,7 @@
 #include "error.h"
 #include "statistics.h"
 #include "inputs.h"
+#include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
 
@@ -33,10 +34,12 @@ void initScatter() {
   double dJmax;
   Atom *atom;
   AtomicLine *line;
+  CMO_PROF_FUNC_START();
+  
 
   /* --- Fill the radiative rates from previous solution if
          PRD lines are present --                      -------------- */
-
+  // CMO, make sure we don't end up rerunning these - they're expensive
   if (atmos.NPRDactive > 0 && input.startJ == OLD_J) {
     for (n = 0; n < atmos.Natom; n++) {
       atom = &atmos.atoms[n];
@@ -71,12 +74,14 @@ void initScatter() {
 
     niter = 0;
     while (input.NmaxIter && niter < input.NmaxScatter) {
-      dJmax = solveSpectrum(FALSE, FALSE);
+      // dJmax = solveSpectrum(FALSE, FALSE);
+      dJmax = solve_spectrum_complete(FALSE);
       if (dJmax < input.iterLimit)
         break;
       niter++;
     }
   }
   getCPU(2, TIME_POLL, "Initial solution");
+  CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- initScatter.c ----------- */
