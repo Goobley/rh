@@ -151,7 +151,7 @@ char *readWholeFile(const char *filename) { /* Reads file into string */
     sprintf(messageStr, "Error reading file %s", filename);
     Error(ERROR_LEVEL_2, routineName, filename);
   }
-  buffer = malloc(length);
+  buffer = (char*)calloc(1, length+1);
   if (buffer) {
     if (fread(buffer, 1, length, fp) < 1) {
       sprintf(messageStr, "Error reading file %s", filename);
@@ -162,6 +162,7 @@ char *readWholeFile(const char *filename) { /* Reads file into string */
     sprintf(messageStr, "Error closing file %s", filename);
     Error(ERROR_LEVEL_2, routineName, filename);
   }
+  buffer[length] = '\0';
   return buffer;
 }
 

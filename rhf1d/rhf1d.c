@@ -148,6 +148,8 @@ int main(int argc, char *argv[]) {
   // cmo_init_prof(&threadProf, 0, 1024*32);
   // cmo_prof_start_timed_region(&threadProf, __func__);
 
+  // for (int i = 0; i < 2; ++i)
+  // {
   setOptions(argc, argv);
   getCPU(0, TIME_START, NULL);
   SetFPEtraps();
@@ -186,7 +188,7 @@ int main(int argc, char *argv[]) {
   Iterate(input.NmaxIter, input.iterLimit);
   CMO_PROF_FUNC_END();
   cmo_free_misc();
-
+  // }
   // CMO: Removed temporarily
   // adjustStokesMode();
   // niter = 0;

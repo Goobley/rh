@@ -627,6 +627,8 @@ void initAtom(Atom *atom) {
   atom->continuum = NULL;
   atom->ft = NULL;
   atom->Ng_n = NULL;
+  atom->rhth = NULL;
+  atom->rhacc = NULL;
 }
 /* ------- end ---------------------------- initAtom.c -------------- */
 
@@ -723,7 +725,7 @@ void freeAtom(Atom *atom) {
   if (atom->Gamma != NULL)
     freeMatrix((void **)atom->Gamma);
 
-  if (atom->rhacc != NULL)
+  if (atom->active && atom->rhacc != NULL)
   {
     for (int n = 0; n < input.Nthreads; ++n)
     {
@@ -735,6 +737,7 @@ void freeAtom(Atom *atom) {
       free(atom->rhacc[n].lineRatesDirty);
     }
     free(atom->rhacc);
+    atom->rhacc = NULL;
   }
 
   if (atom->line != NULL) {

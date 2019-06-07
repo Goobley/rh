@@ -64,8 +64,8 @@ void readValues(char *fp_keyword, int Nkeyword, Keyword *theKeywords) {
   const char routineName[] = "readValues";
   register int n;
 
-  char keyword[MAX_KEYWORD_LENGTH], value[MAX_VALUE_LENGTH],
-      line[MAX_LINE_SIZE];
+  char keyword[MAX_KEYWORD_LENGTH] = {0}, value[MAX_VALUE_LENGTH] = {0},
+      line[MAX_LINE_SIZE] = {0};
   bool_t recognized, exit_on_EOF;
   int nread;
 
