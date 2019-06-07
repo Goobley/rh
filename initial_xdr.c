@@ -189,7 +189,8 @@ void fast_ncoeff(int la, InterpBounds* bounds)
           }
           else
           {
-            assert(FALSE && "Lower bound found for lambda_prv too big");
+            bounds->lowerBracket1[lamuk] = 0;
+            bounds->upperBracket1[lamuk] = 0;
           }
         }
         else
@@ -215,7 +216,8 @@ void fast_ncoeff(int la, InterpBounds* bounds)
           }
           else
           {
-            assert(FALSE && "Lower bound found for lambda_gas too big");
+            bounds->lowerBracket2[lamuk] = 0;
+            bounds->upperBracket2[lamuk] = 0;
           }
         }
         else
