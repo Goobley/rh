@@ -68,9 +68,10 @@ void Profile(AtomicLine *line) {
 
   char filename[MAX_LINE_SIZE];
   int lamu, Nlamu, NrecStokes;
-  double *adamp = NULL, **v = NULL, **v_los = NULL, *vB = NULL, *sv = NULL, *vbroad = NULL, Larmor, H, F, wlamu,
-         vk, phi_pi, phi_sm, phi_sp, phi_delta, phi_sigma, psi_pi, psi_sm,
-         psi_sp, psi_delta, psi_sigma, sign, sin2_gamma, *phi = NULL, *phi_Q = NULL, *phi_U = NULL,
+  double *adamp = NULL, **v = NULL, **v_los = NULL, *vB = NULL, 
+         *sv = NULL, *vbroad = NULL, Larmor, H, F, wlamu, vk, phi_pi, 
+         phi_sm, phi_sp, phi_delta, phi_sigma, psi_pi, psi_sm, psi_sp, psi_delta,
+         psi_sigma, sign, sin2_gamma, *phi = NULL, *phi_Q = NULL, *phi_U = NULL,
          *phi_V = NULL, *psi_Q = NULL, *psi_U = NULL, *psi_V = NULL;
 
   Atom *atom = line->atom;
