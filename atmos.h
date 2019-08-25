@@ -9,6 +9,7 @@
 #ifndef __ATMOS_H__
 #define __ATMOS_H__
 
+#include <stdint.h>
 #include "atom.h"
 #include "background.h"
 

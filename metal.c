@@ -420,7 +420,9 @@ flags passive_bb_stateless(PassiveBbState* s, double lambda, int nspect, int mu,
       {
         if (s->lineList[m].used)
         {
+          struct Linelist tmp = s->lineList[l];
           s->lineList[l] = s->lineList[m];
+          s->lineList[m] = tmp;
           break;
         }
       }

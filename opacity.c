@@ -40,7 +40,7 @@
 #include "spectrum.h"
 #include "inputs.h"
 #include "constant.h"
-#define CMO_NO_PROF
+// #define CMO_NO_PROF
 #include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
@@ -677,19 +677,23 @@ void free_as(int nspect, bool_t crosscoupling, int threadId) {
 /* ------- begin -------------------------- containsPolarized.c ----- */
 
 bool_t containsPolarized(ActiveSet *as) {
+  CMO_PROF_FUNC_START();
   register int n, nact;
 
   if (!atmos.Stokes || input.StokesMode == FIELD_FREE)
+    CMO_PROF_FUNC_END();
     return FALSE;
 
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     for (n = 0; n < as->Nactiveatomrt[nact]; n++) {
       if (as->art[nact][n].type == ATOMIC_LINE &&
           as->art[nact][n].ptype.line->polarizable) {
+        CMO_PROF_FUNC_END();
         return TRUE;
       }
     }
   }
+  CMO_PROF_FUNC_END();
   return FALSE;
 }
 /* ------- end ---------------------------- containsPolarized.c ----- */
@@ -698,10 +702,12 @@ bool_t containsPolarized(ActiveSet *as) {
 
 bool_t containsBoundBound(ActiveSet *as) {
   register int n, nact;
+  CMO_PROF_FUNC_START();
 
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     for (n = 0; n < as->Nactiveatomrt[nact]; n++) {
       if (as->art[nact][n].type == ATOMIC_LINE) {
+        CMO_PROF_FUNC_END();
         return TRUE;
       }
     }
@@ -709,10 +715,12 @@ bool_t containsBoundBound(ActiveSet *as) {
   for (nact = 0; nact < atmos.Nactivemol; nact++) {
     for (n = 0; n < as->Nactivemolrt[nact]; n++) {
       if (as->mrt[nact][n].type == VIBRATION_ROTATION) {
-        return TRUE;
+          CMO_PROF_FUNC_END();
+          return TRUE;
       }
     }
   }
+  CMO_PROF_FUNC_END();
   return FALSE;
 }
 /* ------- end ---------------------------- containsBoundBound.c ---- */
@@ -721,17 +729,25 @@ bool_t containsBoundBound(ActiveSet *as) {
 
 bool_t containsActive(ActiveSet *as) {
   register int n, nact;
+  CMO_PROF_FUNC_START();
 
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     if (as->Nactiveatomrt[nact] > 0)
+    {
+      CMO_PROF_FUNC_END();
       return TRUE;
+    }
   }
 
   for (nact = 0; nact < atmos.Nactivemol; nact++) {
     if (as->Nactivemolrt[nact] > 0)
+    {
+      CMO_PROF_FUNC_END();
       return TRUE;
+    }
   }
 
+  CMO_PROF_FUNC_END();
   return FALSE;
 }
 /* ------- end ---------------------------- containsActive.c -------- */
@@ -740,15 +756,18 @@ bool_t containsActive(ActiveSet *as) {
 
 bool_t containsPRDline(ActiveSet *as) {
   register int n, nact;
+  CMO_PROF_FUNC_START();
 
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     for (n = 0; n < as->Nactiveatomrt[nact]; n++) {
       if (as->art[nact][n].type == ATOMIC_LINE &&
           as->art[nact][n].ptype.line->PRD) {
+        CMO_PROF_FUNC_END();
         return TRUE;
       }
     }
   }
+  CMO_PROF_FUNC_END();
   return FALSE;
 }
 /* ------- end ---------------------------- containsPRDline.c ------- */

@@ -78,6 +78,8 @@ void statEquil(Atom *atom, int isum) {
     for (i = 0; i < Nlevel; i++) {
       GamDiag = 0.0;
       Gamma_k[i][i] = 0.0;
+      // NOTE(cmo): All of the n_i's are set to 0 here. (We will modify the total conservation one) -- this is because we're solving Gamma . n' = 0
+      // The copying step for n_k is only to calculate i_eliminate
       n_k[i] = 0.0;
 
       for (j = 0; j < Nlevel; j++)

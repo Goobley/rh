@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <x86intrin.h>
 // #include <threads.h>
+#include <pthread.h>
 
 typedef uint32_t bool32_t;
 
@@ -173,6 +174,7 @@ void cmo_prof_print_file(ProfileScratch* scr, const char* fname)
 
 void cmo_allocate_prof_array(int numThreads, int entries)
 {
+    printf("Allocating profiler space of %d threads\n", numThreads);
     profiler = calloc(numThreads, sizeof(ProfileScratch));
     for (int i = 0; i < numThreads; ++i)
     {
@@ -191,6 +193,14 @@ void cmo_free_prof_array(int numThreads)
 
 // _Thread_local ProfileScratch threadProf;
 _Thread_local int CmoProfileId;
+// __thread int CmoProfileId;
+// tss_t CmoProfileId;
+// I think tss_t is borked everywhere due to lack of standards, what we can support as a backup is two options.
+// Make sure that every threaded function has a threadId value, that can implicitly read by the macro
+// OR
+// re-engineer CmoProfileId to use pthread_key_t for a thread_local
+// profiler/indexing array (the former may be harder to serialise).
+// Can maybe just replace the thread_local with pthread_self
 ProfileScratch* profiler;
 
 #endif

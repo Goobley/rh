@@ -358,6 +358,7 @@ static void inner_background(BackgroundState* bg, int nspect, int threadId)
         if (input.allow_passive_bb) {
           flags backgrflags =
               passive_bb_stateless(bg->bbState, wavelength, nspect, mu, to_obs, bg->chi, bg->eta, bg->chip);
+              // passive_bb(wavelength, nspect, mu, to_obs, bg->chi, bg->eta, bg->chip);
 
           int nStokes = 1;
           // if (backgrflags.hasline) {

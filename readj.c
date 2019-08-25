@@ -73,17 +73,35 @@ int cmo_store_background(int nspect, int mu, bool_t to_obs, double *chi_c,
 
   if (lamu != 0)
   {
-    int idx = lamu;
+    // int idx = lamu;
     int minIdx = nspect * (2 * atmos.Nrays);
-    while (--idx >= minIdx && !atmos.chi_b[idx])
+    // while (--idx >= minIdx && !atmos.chi_b[idx])
+    // {
+    //   atmos.chi_b[idx] = atmos.chi_b[lamu];
+    //   atmos.eta_b[idx] = atmos.eta_b[lamu];
+    //   atmos.sca_b[idx] = atmos.sca_b[lamu];
+    //   if ((atmos.backgrflags[nspect] & IS_POLARIZED) && input.magneto_optical)
+    //   {
+    //     atmos.chip_b[idx] = atmos.chip_b[lamu];
+    //   }
+    // }
+    for (int idx = lamu-1; idx >= minIdx; --idx)
     {
-      atmos.chi_b[idx] = atmos.chi_b[lamu];
-      atmos.eta_b[idx] = atmos.eta_b[lamu];
-      atmos.sca_b[idx] = atmos.sca_b[lamu];
-      if ((atmos.backgrflags[nspect] & IS_POLARIZED) && input.magneto_optical)
+      if (!atmos.chi_b[idx])
       {
-        atmos.chip_b[idx] = atmos.chip_b[lamu];
+        atmos.chi_b[idx] = atmos.chi_b[lamu];
+        atmos.eta_b[idx] = atmos.eta_b[lamu];
+        atmos.sca_b[idx] = atmos.sca_b[lamu];
+        if ((atmos.backgrflags[nspect] & IS_POLARIZED) && input.magneto_optical)
+        {
+          atmos.chip_b[idx] = atmos.chip_b[lamu];
+        }
       }
+      else
+      {
+        break;
+      }
+      
     }
   }
 

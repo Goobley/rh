@@ -48,6 +48,7 @@ typedef struct {
 /* --- Associated function prototypes --               -------------- */
 
 double Formal(int nspect, bool_t eval_operator, bool_t redistribute, int threadId);
+double Formal_sc_no_pol_cmo(int nspect, bool_t eval_operator, bool_t redistribute, int threadId);
 double solveSpectrum(bool_t eval_operator, bool_t redistribute);
 double solve_spectrum_complete(bool_t eval_operator);
 double solve_spectrum_redist(bool_t eval_operator);

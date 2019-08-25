@@ -36,6 +36,7 @@
 #include "geometry.h"
 #include "spectrum.h"
 #include "error.h"
+#include "CmoProfile.h"
 
 #define A_SIXTH 0.166666666667
 
@@ -54,6 +55,8 @@ double Feautrier(int nspect, int mu, double *chi, double *S,
                  enum FeautrierOrder F_order, double *P, double *Psi) {
   const char routineName[] = "Feautrier";
   register int k;
+
+  CMO_PROF_FUNC_START();
 
   int Ndep = geometry.Ndep;
   double r0, h0, rN, hN, f0, fN, Ak, Ck, tau0 = 0.0, Bnu[2], zmu, dtau_mid,
@@ -198,6 +201,8 @@ double Feautrier(int nspect, int mu, double *chi, double *S,
   /* --- Return emergent intensity --                   ------------- */
 
   Iplus = (1.0 + f0) * P[0] - h0 / (1.0 + r0);
+
+  CMO_PROF_FUNC_END();
 
   if (tau0)
     return (Iplus - S[0]) * exp(-tau0) + S[0];

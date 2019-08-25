@@ -514,6 +514,7 @@ double solve_spectrum_complete(bool_t eval_operator) {
     for (nspect = 0; nspect < spectrum.Nspect; nspect++) {
       if (!redistribute ||
           (redistribute && containsPRDline(&spectrum.as[nspect]))) {
+        // dJ = Formal_sc_no_pol_cmo(nspect, eval_operator, redistribute, 0);
         dJ = Formal(nspect, eval_operator, redistribute, 0);
         if (dJ > dJmax) {
           dJmax = dJ;
@@ -521,12 +522,14 @@ double solve_spectrum_complete(bool_t eval_operator) {
         }
       }
     }
+    CMO_PROF_REGION_START("Rates/Gamma accum");
     for (int nact = 0; nact < atmos.Nactiveatom; ++nact)
     {
       accumulate_Gamma(atmos.activeatoms[nact]);
       accumulate_rates_lines(atmos.activeatoms[nact]);
       accumulate_rates_cont(atmos.activeatoms[nact]);
     }
+    CMO_PROF_REGION_END("Rates/Gamma accum");
   }
 
   sprintf(messageStr, " Spectrum max delta J = %6.4E (lambda#: %d)\n", dJmax,

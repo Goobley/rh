@@ -46,7 +46,7 @@
 #define SCHED_SPIN_COUNT_MAX 16
 #include "sched.h"
 
-#define CMO_PROFILE_IMPL
+// #define CMO_PROFILE_IMPL
 #include "CmoProfile.h"
 
 /* --- Function prototypes --                          -------------- */
@@ -1291,11 +1291,10 @@ void initSolution(Atom *atom, Molecule *molecule) {
     /* --- Allocate memory for the rate equation matrix -- ---------- */
 
     atom->Gamma = matrix_double(SQ(atom->Nlevel), atmos.Nspace);
-    if (input.Nthreads > 1)
+    if (input.Nthreads > 0)
     {
       for (int n = 0; n < input.Nthreads; ++n)
       {
-        // CMO: WARNING: THESE ARE JUST LEAKED FOR NOW!
         atom->rhacc[n].Gamma = matrix_double(SQ(atom->Nlevel), atmos.Nspace);
         atom->rhacc[n].RjiLine = matrix_double(atom->Nline, atmos.Nspace);
         atom->rhacc[n].RijLine = matrix_double(atom->Nline, atmos.Nspace);

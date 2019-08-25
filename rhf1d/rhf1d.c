@@ -31,13 +31,14 @@
 #include "inputs.h"
 #include "xdr.h"
 
-#ifdef NO_MAIN
-  #define CMO_NO_PROF
-#endif
+// #ifdef NO_MAIN
+//   #define CMO_NO_PROF
+// #endif
 #ifdef CMO_NO_PROF
   #undef CMO_NO_PROF
   #define SMALL_PROF
 #endif
+// #define CMO_PROFILE_IMPL
 #include "CmoProfile.h"
 
 
@@ -71,10 +72,29 @@ extern char messageStr[];
 static void init_profiler_id_sched(void* userdata, sched_uint threadId)
 {
   CmoProfileId = threadId;
+  // tss_create(&CmoProfileId, free);
+  // tss_set(CmoProfileId, threadId)
 }
 /* ------- begin -------------------------- rhf1d.c ----------------- */
 void cmo_init_misc()
 {
+  // return;
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  printf("C Misc init\n");
+  fflush(stdout);
+  // assert(FALSE);
+
+  // FILE* f = fopen("blah.txt", "w");
+  // fprintf(f, "test");
+  // fflush(f);
+  // fclose(f);
+
 #ifndef SMALL_PROF
   cmo_allocate_prof_array(input.Nthreads, 128*1024*1024);
 #else
