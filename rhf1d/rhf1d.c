@@ -19,6 +19,7 @@
        --                                              -------------- */
 
 #include <string.h>
+#include <math.h>
 
 #include "rh.h"
 #include "atom.h"
@@ -31,14 +32,14 @@
 #include "inputs.h"
 #include "xdr.h"
 
-// #ifdef NO_MAIN
-//   #define CMO_NO_PROF
-// #endif
+#ifdef NO_MAIN
+  #define CMO_NO_PROF
+#endif
 #ifdef CMO_NO_PROF
   #undef CMO_NO_PROF
   #define SMALL_PROF
 #endif
-// #define CMO_PROFILE_IMPL
+#define CMO_PROFILE_IMPL
 #include "CmoProfile.h"
 
 
@@ -206,6 +207,35 @@ int main(int argc, char *argv[]) {
   /* --- Solve radiative transfer for active ingredients -- --------- */
 
   Iterate(input.NmaxIter, input.iterLimit);
+
+  printf("Initial Stat Eq achieved. Waiting\n");
+  getchar();
+
+  double timeStep = 0.5;
+  for (int i = 11;  i < 31;  i++) 
+  {
+    double di = (i - 20.0) / 3.0;
+    atmos.T[i] *= 1.0 + 2.0 * exp(-SQ(di));
+  }
+
+
+  for (int t = 0; t < 3; ++t)
+  {
+    // Update the background
+    cmo_background(FALSE, FALSE);
+    // Really need to update collisions too -- this is in fact done by the background already. Woot woot.
+    // Get the new Voigt profiles for the adjusted atmosphere
+    getProfiles();
+
+    printf("Time integration %d\n", t);
+    time_dependent_iteration(timeStep, input.NmaxIter, input.iterLimit);
+    printf("Iter %d done. Waiting\n", t);
+    getchar();
+  }
+
+
+
+
   CMO_PROF_FUNC_END();
   cmo_free_misc();
   // }

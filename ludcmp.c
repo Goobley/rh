@@ -21,7 +21,7 @@
 
 /* --- Function prototypes --                          -------------- */
 
-void LUdecomp(int N, double **A, int *index, double *d);
+int LUdecomp(int N, double **A, int *index, double *d);
 void LUbacksubst(int N, double **A, int *index, double *b);
 
 /* --- Global variables --                             -------------- */
@@ -30,7 +30,7 @@ extern char messageStr[];
 
 /* ------- begin -------------------------- SolveLinearEq.c --------- */
 
-void SolveLinearEq(int N, double **A, double *b, bool_t improve) {
+int SolveLinearEq(int N, double **A, double *b, bool_t improve) {
   register int i, j;
 
   int *index;
@@ -61,7 +61,9 @@ void SolveLinearEq(int N, double **A, double *b, bool_t improve) {
   }
   /* --- Initial solution --                           ------------- */
 
-  LUdecomp(N, A, index, &d);
+  if (LUdecomp(N, A, index, &d) != 0)
+    return -1;
+
   LUbacksubst(N, A, index, b);
 
   if (improve) {
@@ -82,6 +84,7 @@ void SolveLinearEq(int N, double **A, double *b, bool_t improve) {
     freeMatrix((void **)A_copy);
   }
   free(index);
+  return 0;
 }
 
   /* ------- end ---------------------------- SolveLinearEq.c --------- */
@@ -90,7 +93,7 @@ void SolveLinearEq(int N, double **A, double *b, bool_t improve) {
 
 #define TINY 1.0e-20;
 
-void LUdecomp(int N, double **A, int *index, double *d) {
+int LUdecomp(int N, double **A, int *index, double *d) {
   register int i, j, k;
 
   int imax = 0;
@@ -106,7 +109,9 @@ void LUdecomp(int N, double **A, int *index, double *d) {
         big = temp;
     if (big == 0.0) {
       sprintf(messageStr, "Singular matrix");
-      Error(ERROR_LEVEL_2, "LUdecomp", messageStr);
+      // Error(ERROR_LEVEL_2, "LUdecomp", messageStr);
+      Error(MESSAGE, "LUdecomp", messageStr);
+      return -1;
     }
     vv[i] = 1.0 / big;
   }
@@ -148,6 +153,7 @@ void LUdecomp(int N, double **A, int *index, double *d) {
     }
   }
   free(vv);
+  return 0;
 }
 
 /* ------- end ---------------------------- LUdecomp.c -------------- */

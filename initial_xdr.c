@@ -1445,6 +1445,17 @@ void initSolution(Atom *atom, Molecule *molecule) {
       Error(ERROR_LEVEL_2, routineName, messageStr);
     }
   }
+
+  // // Allocate space for backup of active atoms
+  // if (!atmos.backupAtoms)
+  // {
+  //   atmos.backupAtoms = (Atom*)malloc(atmos.Nactiveatom * sizeof(Atom));
+  //   for (int nact = 0; nact < atmos.Nactiveatom; ++nact)
+  //   {
+  //     initAtom(&atmos.backupAtoms[i]);
+  //   }
+  // }
+
   CMO_PROF_FUNC_END();
 }
 /* ------- end ---------------------------- initSolution.c ---------- */

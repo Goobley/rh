@@ -979,18 +979,19 @@ void cmo_background(bool_t write_analyze_output, bool_t equilibria_only)
   }
 
   
-  if (atmos.Natom > 1) {
-    for (int n = 1; n < atmos.Natom; n++)
-      if (!atmos.atoms[n].active && !atmos.hydrostatic &&
-          input.solve_ne < ITERATION)
-        freeAtom(&atmos.atoms[n]);
-  }
-  if (atmos.Nmolecule > 1) {
-    for (int n = 1; n < atmos.Nmolecule; n++)
-      if (!atmos.molecules[n].active && !atmos.hydrostatic &&
-          input.solve_ne < ITERATION)
-        freeMolecule(&atmos.molecules[n]);
-  }
+  // NOTE(cmo): Don't free background atoms, as we will need them again
+  // if (atmos.Natom > 1) {
+  //   for (int n = 1; n < atmos.Natom; n++)
+  //     if (!atmos.atoms[n].active && !atmos.hydrostatic &&
+  //         input.solve_ne < ITERATION)
+  //       freeAtom(&atmos.atoms[n]);
+  // }
+  // if (atmos.Nmolecule > 1) {
+  //   for (int n = 1; n < atmos.Nmolecule; n++)
+  //     if (!atmos.molecules[n].active && !atmos.hydrostatic &&
+  //         input.solve_ne < ITERATION)
+  //       freeMolecule(&atmos.molecules[n]);
+  // }
 
   // NOTE(cmo): Don't free the Kurucz data, we might need it again
   // if (strcmp(input.KuruczData, "none")) {

@@ -85,7 +85,10 @@ void Iterate(int NmaxIter, double iterLimit) {
   CMO_PROF_FUNC_START();
 
   if (NmaxIter <= 0)
+  {
+    CMO_PROF_FUNC_END();
     return;
+  }
   getCPU(1, TIME_START, NULL);
 
 
@@ -167,7 +170,7 @@ void Iterate(int NmaxIter, double iterLimit) {
 
     if (input.solve_ne == ITERATION)
       // Background(write_analyze_output = TRUE, equilibria_only = FALSE);
-      cmo_background(write_analyze_output = TRUE, equilibria_only = FALSE);
+      cmo_background(write_analyze_output = FALSE, equilibria_only = FALSE);
 
     /* Update collisional multiplier factor */
     if (input.crsw > 0)
@@ -225,7 +228,8 @@ void Iterate(int NmaxIter, double iterLimit) {
   CMO_PROF_REGION_START("Reg: CleanUp");
   for (nact = 0; nact < atmos.Nactiveatom; nact++) {
     atom = atmos.activeatoms[nact];
-    freeMatrix((void **)atom->Gamma);
+    // NOTE(cmo): Don't free this if we want to iterate more later.
+    // freeMatrix((void **)atom->Gamma);
     NgFree(atom->Ng_n);
   }
   for (nact = 0; nact < atmos.Nactivemol; nact++) {
@@ -630,13 +634,14 @@ double solve_spectrum_redist(bool_t eval_operator) {
 
     {
       // Nothing is ever added to the continuum rates in PRD
-      struct sched_task tGamma;
+      // I think the same it true for Gamma, as we don't eval Psi
+      // struct sched_task tGamma;
       struct sched_task tRatesLines;
       // struct sched_task tRatesCont;
-      scheduler_add(&input.sched, &tGamma, accumulate_Gamma_sched, NULL, atmos.Nactiveatom, 1);
+      // scheduler_add(&input.sched, &tGamma, accumulate_Gamma_sched, NULL, atmos.Nactiveatom, 1);
       scheduler_add(&input.sched, &tRatesLines, accumulate_rates_lines_sched, NULL, atmos.Nactiveatom, 1);
       // scheduler_add(&input.sched, &tRatesCont, accumulate_rates_cont_sched, NULL, atmos.Nactiveatom, 1);
-      scheduler_join(&input.sched, &tGamma);
+      // scheduler_join(&input.sched, &tGamma);
       scheduler_join(&input.sched, &tRatesLines);
       // scheduler_join(&input.sched, &tRatesCont);
     }

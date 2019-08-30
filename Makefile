@@ -91,6 +91,7 @@ SRC = abundance.c \
 	  stokesopac.c \
 	  stopreq.c \
 	  thomson.c \
+	  timeintegrate.c \
 	  vacuumtoair.c \
 	  voigt.c \
 	  w3.c \

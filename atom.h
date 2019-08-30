@@ -191,6 +191,7 @@ struct Paschenstruct {
 
 void initSolution();
 void Iterate(int NmaxIter, double iterLimit);
+int time_dependent_iteration(double tStep, int NmaxIter, double iterLimit);
 
 void readAtomicModels(void);
 void readMolecularModels(void);
